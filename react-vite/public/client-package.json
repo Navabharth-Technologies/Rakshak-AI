@@ -7,5 +7,6 @@
     "test": ""
   },
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "homepage": "index.html"
 }
