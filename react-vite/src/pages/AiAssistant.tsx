@@ -6,7 +6,6 @@ import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 import { useToastStore } from '../store/toastStore';
 import { useCaseStore } from '../store/caseStore';
-import { useTimelineStore } from '../store/timelineStore';
 import axios from 'axios';
 
 interface Message {
@@ -18,7 +17,7 @@ interface Message {
   evidence?: string[];
 }
 
-const getMockResponse = (query: string, lang: string, timelineEvents: any[] = []) => {
+export const getMockResponse = (query: string, lang: string, timelineEvents: any[] = []) => {
   const q = query.toLowerCase();
   const resLang = lang === 'kn' ? 'kn' : (lang === 'hi' ? 'hi' : 'en');
   
@@ -316,7 +315,6 @@ const getMockResponse = (query: string, lang: string, timelineEvents: any[] = []
 
 const AiAssistant = () => {
   const { t, i18n } = useTranslation();
-  const { events } = useTimelineStore();
   const { cases } = useCaseStore();
   const { addToast } = useToastStore();
 
@@ -486,7 +484,7 @@ const AiAssistant = () => {
           <button 
             onClick={handleExport}
             disabled={isExporting}
-            className={`bg-white dark:bg-white/5 border border-gray-300 dark:border-white/10 hover:bg-gray-50 dark:hover:bg-white/10 px-4 py-2 rounded-lg flex items-center transition-colors text-sm text-gray-700 dark:text-gray-300 ${isExporting ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`bg-primary hover:bg-primary/80 text-white shadow-lg shadow-primary/25 px-4 py-2 rounded-lg font-semibold flex items-center transition-all text-sm ${isExporting ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <Download className="w-4 h-4 mr-2" /> {isExporting ? 'Exporting...' : t('ai_export')}
           </button>

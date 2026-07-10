@@ -1,22 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Settings, Users, Cpu, Shield, UserX, Activity, CheckCircle, Database, Search, Plus, Save, AlertTriangle, RefreshCw, X, Info, Download, Edit2, Trash2, UserCheck, UserMinus } from 'lucide-react';
+import { Settings, Users, Cpu, Shield, UserX, CheckCircle, Database, Search, Plus, Save, AlertTriangle, RefreshCw, Info, Download, Edit2, Trash2, UserCheck, UserMinus, ChevronDown } from 'lucide-react';
 import { useToastStore } from '../store/toastStore';
 import { useUserStore } from '../store/userStore';
+import { useTimelineStore } from '../store/timelineStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import Modal from '../components/Modal';
-
-const MOCK_LOGS = [
-  { id: 1, time: '10:45 AM', date: 'Today', user: 'Jane Smith', action: 'Accessed highly classified FIR #104430006202600001 via secure terminal.', type: 'info', ip: '192.168.1.45' },
-  { id: 2, time: '09:30 AM', date: 'Today', user: 'Rahul K', action: 'Exported Heatmap Data (Bengaluru South) to external encrypted drive.', type: 'warning', ip: '192.168.1.12' },
-  { id: 3, time: '09:00 AM', date: 'Today', user: 'John Doe', action: 'System Login successful. 2FA verified.', type: 'success', ip: '10.0.0.5' },
-  { id: 4, time: '11:15 PM', date: 'Yesterday', user: 'SYSTEM', action: 'Automated nightly database backup completed (45.2 GB).', type: 'info', ip: 'localhost' },
-];
 
 const DIVISIONS = ['Headquarters', 'Cyber Cell', 'Narcotics', 'Intelligence', 'Homicide', 'Theft & Property', 'Anti-Terrorism', 'Special Branch'];
 
 const AdminSettings = () => {
   const [activeTab, setActiveTab] = useState<'users' | 'ai' | 'logs'>('users');
   const { users, addUser, updateUser, deleteUser, toggleUserStatus } = useUserStore();
+  const { events } = useTimelineStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
@@ -83,9 +78,32 @@ const AdminSettings = () => {
     setEditUserId(null);
   };
 
+  const handleFullNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/[^a-zA-Z0-9\s]/g, '');
+    val = val.replace(/(.)\1\1/gi, '$1$1');
+    setNewUserName(val);
+  };
+
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/[^a-zA-Z]/g, '');
+    val = val.replace(/(.)\1\1/gi, '$1$1');
+    setNewUsername(val);
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value.replace(/\s/g, '');
+    val = val.replace(/(.)\1\1/gi, '$1$1');
+    setNewPassword(val);
+  };
+
   const handleSaveUser = () => {
     if (!newUserName || !newUsername || !newPassword) {
       addToast('Please fill in all fields (Name, Username, Password)', 'error');
+      return;
+    }
+    
+    if (/\s/.test(newPassword)) {
+      addToast('Password cannot contain whitespace characters.', 'error');
       return;
     }
     
@@ -127,11 +145,40 @@ const AdminSettings = () => {
     }, 3000);
   };
 
-  const filteredUsers = users.filter(u => 
-    u.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    u.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    u.role.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handleExportCSV = () => {
+    if (events.length === 0) {
+      addToast('No logs available to export.', 'error');
+      return;
+    }
+    
+    const csvRows = ['Date,Time,User,Action,IP'];
+    events.forEach(event => {
+      csvRows.push(`"${event.date}","${event.time}","System/User","${event.title} - ${event.desc}","localhost"`);
+    });
+    
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Security_Audit_Logs.csv';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    addToast('Logs exported to secure drive in CSV format.', 'success');
+  };
+
+  const filteredUsers = users.filter(u => {
+    const query = searchQuery.toLowerCase();
+    return (
+      (u.name && u.name.toLowerCase().includes(query)) || 
+      (u.id && String(u.id).toLowerCase().includes(query)) ||
+      (u.role && u.role.toLowerCase().includes(query)) ||
+      (u.division && u.division.toLowerCase().includes(query)) ||
+      (u.status && u.status.toLowerCase().includes(query)) ||
+      (u.username && u.username.toLowerCase().includes(query))
+    );
+  });
 
   return (
     <div className="space-y-6 h-full flex flex-col">
@@ -140,145 +187,118 @@ const AdminSettings = () => {
           <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center">
             <Settings className="mr-3 text-primary w-6 h-6" /> System Configuration & Command Center
           </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Super Admin restricted access only. All actions are strictly audited.</p>
+          <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Super Admin restricted access only. All actions are strictly audited.</p>
         </div>
       </div>
 
-      <div className="flex space-x-2 border-b border-gray-200 dark:border-white/10 pb-2">
-        <button 
-          onClick={() => setActiveTab('users')}
-          className={`px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-all ${activeTab === 'users' ? 'border-primary text-primary bg-primary/10 shadow-[inset_0_-2px_10px_rgba(59,130,246,0.1)]' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5'}`}
-        >
-          <Users className="w-4 h-4 inline-block mr-2" /> User Management
+      <div className="flex space-x-2 border-b border-gray-200 dark:border-white/10">
+        <button onClick={() => setActiveTab('users')} className={`px-4 py-2 text-sm font-semibold transition-colors flex items-center ${activeTab === 'users' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>
+          <Users className="w-4 h-4 mr-2" /> User Management
         </button>
-        <button 
-          onClick={() => setActiveTab('ai')}
-          className={`px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-all ${activeTab === 'ai' ? 'border-primary text-primary bg-primary/10 shadow-[inset_0_-2px_10px_rgba(59,130,246,0.1)]' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5'}`}
-        >
-          <Cpu className="w-4 h-4 inline-block mr-2" /> AI Subsystem Tuning
+        <button onClick={() => setActiveTab('ai')} className={`px-4 py-2 text-sm font-semibold transition-colors flex items-center ${activeTab === 'ai' ? 'text-primary border-b-2 border-primary' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>
+          <Cpu className="w-4 h-4 mr-2" /> AI Subsystem Tuning
         </button>
-        <button 
-          onClick={() => setActiveTab('logs')}
-          className={`px-4 py-2.5 text-sm font-medium rounded-t-lg border-b-2 transition-all ${activeTab === 'logs' ? 'border-primary text-primary bg-primary/10 shadow-[inset_0_-2px_10px_rgba(59,130,246,0.1)]' : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5'}`}
-        >
-          <Shield className="w-4 h-4 inline-block mr-2" /> Security & Audit Logs
+        <button onClick={() => setActiveTab('logs')} className={`px-4 py-2 text-sm font-semibold transition-colors flex items-center ${activeTab === 'logs' ? 'text-primary border-b-2 border-primary bg-primary/5 rounded-t-lg' : 'text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}>
+          <Shield className="w-4 h-4 mr-2" /> Security & Audit Logs
         </button>
       </div>
 
-      <div className="flex-1 bg-white dark:glass p-6 rounded-xl border border-gray-200 dark:border-white/10 overflow-y-auto custom-scrollbar relative shadow-sm dark:shadow-none">
+      <div className="flex-1 overflow-hidden">
         <AnimatePresence mode="wait">
-          
           {activeTab === 'users' && (
             <motion.div 
               key="users"
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-              className="space-y-6"
+              className="space-y-4 h-full flex flex-col"
             >
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                <h3 className="text-lg font-bold text-gray-900 dark:text-gray-200 flex items-center">
-                  <Shield className="w-5 h-5 mr-2 text-primary" /> Active Personnel Access
-                </h3>
-                
-                <div className="flex items-center space-x-3 w-full sm:w-auto">
-                  <div className="relative flex-1 sm:w-64">
-                    <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400 dark:text-gray-500" />
-                    <input 
-                      type="text" 
-                      placeholder="Search users..." 
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full bg-gray-50 dark:bg-black/40 border border-gray-300 dark:border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-primary transition-colors placeholder-gray-400 dark:placeholder-gray-500"
-                    />
-                  </div>
-                  <button 
-                    onClick={() => setIsAddUserModalOpen(true)} 
-                    className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors flex items-center whitespace-nowrap shadow-lg shadow-primary/25"
-                  >
-                    <Plus className="w-4 h-4 mr-1" /> Add User
-                  </button>
+              <div className="flex justify-between items-center">
+                <div className="relative w-64">
+                  <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input 
+                    type="text" 
+                    placeholder="Search personnel..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full bg-white dark:bg-black/30 border border-gray-300 dark:border-white/10 rounded-lg pl-9 pr-4 py-2 text-sm text-gray-900 dark:text-white focus:outline-none focus:border-primary transition-colors"
+                  />
                 </div>
+                <button onClick={() => setIsAddUserModalOpen(true)} className="bg-primary hover:bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors shadow-lg shadow-primary/25 flex items-center">
+                  <Plus className="w-4 h-4 mr-1.5" /> Provision User
+                </button>
               </div>
-              
-              <div className="overflow-x-auto rounded-lg border border-gray-200 dark:border-white/5 shadow-sm dark:shadow-none">
-                <table className="w-full text-left text-sm text-gray-700 dark:text-gray-300">
-                  <thead className="bg-gray-50 dark:bg-black/60 border-b border-gray-200 dark:border-white/10 text-gray-500 dark:text-gray-400 uppercase text-xs tracking-wider">
-                    <tr>
-                      <th className="px-5 py-4">ID</th>
-                      <th className="px-5 py-4">Name / Division</th>
-                      <th className="px-5 py-4">Role</th>
-                      <th className="px-5 py-4">Status</th>
-                      <th className="px-5 py-4">Last Login</th>
-                      <th className="px-5 py-4 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <AnimatePresence>
-                      {filteredUsers.length > 0 ? (
-                        filteredUsers.map((u, i) => (
-                          <motion.tr 
-                            layout
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ delay: i * 0.05 }}
-                            key={u.id} 
-                            className="border-b border-gray-200 dark:border-white/5 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors group"
-                          >
-                            <td className="px-5 py-4 font-mono text-xs text-gray-500 dark:text-gray-400">{u.id}</td>
-                            <td className="px-5 py-4">
-                              <div className="font-semibold text-gray-900 dark:text-gray-200">{u.name}</div>
-                              <div className="text-xs text-gray-500 dark:text-gray-500 mt-0.5">{u.division}</div>
-                            </td>
-                            <td className="px-5 py-4">
-                              <span className={`px-2.5 py-1 rounded text-xs font-semibold ${u.role === 'Super Admin' ? 'bg-danger/20 text-danger border border-danger/20' : 'bg-primary/20 text-primary border border-primary/20'}`}>
-                                {u.role}
-                              </span>
-                            </td>
-                            <td className="px-5 py-4">
-                              <span className={`px-2.5 py-1 rounded text-xs font-semibold flex items-center w-max border ${u.status === 'Active' ? 'bg-success/10 text-success border-success/20' : 'bg-gray-200 dark:bg-gray-800/50 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-700'}`}>
-                                {u.status === 'Active' ? <CheckCircle className="w-3.5 h-3.5 mr-1.5" /> : <UserX className="w-3.5 h-3.5 mr-1.5" />} {u.status}
-                              </span>
-                            </td>
-                            <td className="px-5 py-4 text-gray-500 dark:text-gray-400 text-xs">{u.lastLogin}</td>
-                            <td className="px-5 py-4 text-right">
+
+              <div className="bg-white dark:bg-black/30 border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden flex-1 flex flex-col">
+                <div className="overflow-y-auto flex-1 custom-scrollbar">
+                  <table className="w-full text-left text-sm">
+                    <thead className="bg-gray-50 dark:bg-black/50 sticky top-0 z-10">
+                      <tr className="text-gray-500 dark:text-gray-400">
+                        <th className="p-4 font-semibold w-1/4">Officer Name & ID</th>
+                        <th className="p-4 font-semibold w-1/4">Role & Division</th>
+                        <th className="p-4 font-semibold w-1/6">Status</th>
+                        <th className="p-4 font-semibold w-1/6">Last Active</th>
+                        <th className="p-4 font-semibold text-right w-1/6">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                      {filteredUsers.map(u => (
+                        <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-white/[0.02] transition-colors group">
+                          <td className="p-4">
+                            <div className="flex items-center">
+                              <div className="w-8 h-8 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold mr-3">
+                                {u.name.charAt(0)}
+                              </div>
+                              <div>
+                                <div className="font-bold text-gray-900 dark:text-gray-200 group-hover:text-primary transition-colors">{u.name}</div>
+                                <div className="text-xs text-gray-500 font-mono mt-0.5">{u.id}</div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-4">
+                            <div className="font-medium text-gray-700 dark:text-gray-300">{u.role}</div>
+                            <div className="text-xs text-gray-500 mt-0.5">{u.division}</div>
+                          </td>
+                          <td className="p-4">
+                            <span className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                              u.status === 'Active' ? 'bg-success/10 text-success border border-success/20' : 'bg-danger/10 text-danger border border-danger/20'
+                            }`}>
+                              {u.status === 'Active' ? <CheckCircle className="w-3 h-3 mr-1" /> : <UserX className="w-3 h-3 mr-1" />}
+                              {u.status}
+                            </span>
+                          </td>
+                          <td className="p-4 text-gray-500 dark:text-gray-400 text-xs">
+                            {u.lastLogin}
+                          </td>
+                          <td className="p-4 text-right opacity-0 group-hover:opacity-100 transition-opacity">
+                            <div className="flex justify-end space-x-2">
                               {u.role !== 'Super Admin' && (
-                                <div className="flex items-center justify-end space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <button 
-                                    onClick={() => openEditModal(u)}
-                                    className="p-1.5 text-gray-500 hover:text-primary hover:bg-primary/10 rounded transition-colors"
-                                    title="Edit User"
-                                  >
+                                <>
+                                  <button onClick={() => openEditModal(u)} className="p-1.5 bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 rounded text-gray-600 dark:text-gray-400 hover:text-primary transition-colors" title="Edit User">
                                     <Edit2 className="w-4 h-4" />
                                   </button>
-                                  <button 
-                                    onClick={() => handleToggleStatus(u.id, u.status)}
-                                    className={`p-1.5 rounded transition-colors ${u.status === 'Active' ? 'text-warning hover:text-white hover:bg-warning' : 'text-success hover:text-white hover:bg-success'}`}
-                                    title={u.status === 'Active' ? "Suspend User" : "Activate User"}
-                                  >
+                                  <button onClick={() => handleToggleStatus(u.id, u.status)} className={`p-1.5 ${u.status === 'Active' ? 'bg-warning/10 hover:bg-warning/20 text-warning' : 'bg-success/10 hover:bg-success/20 text-success'} rounded transition-colors`} title={u.status === 'Active' ? 'Suspend Access' : 'Restore Access'}>
                                     {u.status === 'Active' ? <UserMinus className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
                                   </button>
-                                  <button 
-                                    onClick={() => handleDeleteUser(u.id)}
-                                    className="p-1.5 text-danger hover:text-white hover:bg-danger rounded transition-colors"
-                                    title="Delete User"
-                                  >
+                                  <button onClick={() => handleDeleteUser(u.id)} className="p-1.5 bg-danger/10 hover:bg-danger/20 rounded text-danger transition-colors" title="Delete User">
                                     <Trash2 className="w-4 h-4" />
                                   </button>
-                                </div>
+                                </>
                               )}
-                            </td>
-                          </motion.tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={6} className="px-5 py-12 text-center text-gray-400 dark:text-gray-500">
-                            No users found matching "{searchQuery}"
+                              {u.role === 'Super Admin' && (
+                                <span className="text-xs text-gray-400 italic">Protected</span>
+                              )}
+                            </div>
                           </td>
                         </tr>
-                      )}
-                    </AnimatePresence>
-                  </tbody>
-                </table>
+                      ))}
+                    </tbody>
+                  </table>
+                  {filteredUsers.length === 0 && (
+                    <div className="flex flex-col items-center justify-center h-40 text-gray-500">
+                      <Search className="w-8 h-8 mb-2 opacity-50" />
+                      <p>No personnel records found.</p>
+                    </div>
+                  )}
+                </div>
               </div>
             </motion.div>
           )}
@@ -287,14 +307,12 @@ const AdminSettings = () => {
             <motion.div 
               key="ai"
               initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }}
-              className="space-y-8 max-w-3xl"
+              className="space-y-6 max-h-full overflow-y-auto pr-2 custom-scrollbar pb-6"
             >
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900 dark:text-gray-200 flex items-center">
-                    <Cpu className="w-6 h-6 mr-2 text-primary" /> Rakshak Intelligence Model Configuration
-                  </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Fine-tune the neural network thresholds used across the pipeline.</p>
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-200">Neural Engine Thresholds</h3>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm mt-1">Adjust sensitivity and classification parameters globally.</p>
                 </div>
                 <button 
                   onClick={handleRestartAI}
@@ -399,14 +417,23 @@ const AdminSettings = () => {
                 <h3 className="text-lg font-bold text-gray-900 dark:text-gray-200 flex items-center">
                   <Database className="w-5 h-5 mr-2 text-primary" /> Immutable Audit Trail
                 </h3>
-                <button onClick={() => addToast('Logs exported to secure drive in CSV format.', 'success')} className="flex items-center bg-gray-100 dark:bg-white/5 hover:bg-gray-200 dark:hover:bg-white/10 px-4 py-2 rounded-lg text-gray-700 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white text-sm font-semibold transition-colors border border-gray-300 dark:border-white/10">
+                <button onClick={handleExportCSV} className="bg-primary hover:bg-primary/80 text-white shadow-lg shadow-primary/25 px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center">
                   <Download className="w-4 h-4 mr-2" /> Export to CSV
                 </button>
               </div>
               
               <div className="bg-gray-100 dark:bg-black/60 border border-gray-300 dark:border-white/10 rounded-xl p-1 flex-1 overflow-hidden flex flex-col">
-                <div className="bg-white dark:bg-[#0D1117] flex-1 overflow-y-auto font-mono text-sm p-4 rounded-lg shadow-inner">
-                  {MOCK_LOGS.map((log) => (
+                <div className="bg-white dark:bg-[#0D1117] flex-1 overflow-y-auto font-mono text-sm p-4 rounded-lg shadow-inner custom-scrollbar relative">
+                  <div className="flex flex-col sm:flex-row sm:items-start py-2 px-2 border-b-2 border-gray-200 dark:border-white/10 mb-2 font-bold text-gray-500 dark:text-gray-400 text-xs uppercase tracking-wider sticky top-0 bg-white dark:bg-[#0D1117] z-10">
+                    <div className="w-40 flex-shrink-0">Date & Time</div>
+                    <div className="flex-1 flex flex-col sm:flex-row sm:items-center">
+                      <span className="w-32 flex-shrink-0">Actor / System</span>
+                      <span className="flex-1">Action & Details</span>
+                    </div>
+                    <div className="w-24 flex-shrink-0 text-right">IP Address</div>
+                  </div>
+                  
+                  {events.map((log) => (
                     <div key={log.id} className="flex flex-col sm:flex-row sm:items-start py-2 border-b border-gray-200 dark:border-white/5 last:border-0 hover:bg-gray-50 dark:hover:bg-white/[0.02] px-2 rounded transition-colors group">
                       <div className="w-40 flex-shrink-0 flex items-center text-gray-500 dark:text-gray-500 text-xs sm:text-sm">
                         <span className="mr-2 opacity-50">[{log.date}]</span>
@@ -415,15 +442,15 @@ const AdminSettings = () => {
                       
                       <div className="flex-1 flex flex-col sm:flex-row sm:items-center mt-1 sm:mt-0">
                         <span className={`w-32 flex-shrink-0 font-bold ${
-                          log.type === 'success' ? 'text-success' : log.type === 'warning' ? 'text-warning' : 'text-primary'
+                          log.type === 'success' ? 'text-success' : log.type === 'alert' ? 'text-danger' : 'text-primary'
                         }`}>
-                          {log.user}
+                          System/User
                         </span>
-                        <span className="text-gray-700 dark:text-gray-300 flex-1">{log.action}</span>
+                        <span className="text-gray-700 dark:text-gray-300 flex-1">{log.title} - {log.desc}</span>
                       </div>
                       
                       <div className="w-24 flex-shrink-0 text-right mt-1 sm:mt-0 text-gray-400 dark:text-gray-600 text-xs group-hover:text-gray-600 dark:group-hover:text-gray-400 transition-colors">
-                        {log.ip}
+                        localhost
                       </div>
                     </div>
                   ))}
@@ -449,9 +476,9 @@ const AdminSettings = () => {
             <input
               type="text"
               value={newUserName}
-              onChange={(e) => setNewUserName(e.target.value)}
+              onChange={handleFullNameChange}
               className="w-full bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-primary transition-colors placeholder-gray-400 dark:placeholder-gray-600"
-              placeholder="e.g. Insp. Ramesh Kumar"
+              placeholder="e.g. Insp Ramesh Kumar"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -460,7 +487,7 @@ const AdminSettings = () => {
               <input
                 type="text"
                 value={newUsername}
-                onChange={(e) => setNewUsername(e.target.value)}
+                onChange={handleUsernameChange}
                 className="w-full bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-primary transition-colors placeholder-gray-400 dark:placeholder-gray-600"
                 placeholder="ramesh"
               />
@@ -470,7 +497,7 @@ const AdminSettings = () => {
               <input
                 type="text"
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={handlePasswordChange}
                 className="w-full bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-primary transition-colors placeholder-gray-400 dark:placeholder-gray-600"
                 placeholder="password123"
               />
@@ -478,31 +505,37 @@ const AdminSettings = () => {
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Role Assignment</label>
-            <select
-              value={newUserRole}
-              onChange={(e) => setNewUserRole(e.target.value)}
-              className="w-full bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-primary transition-colors appearance-none"
-            >
-              <option value="Investigator">Investigator</option>
-              <option value="Supervisor">Supervisor</option>
-              <option value="Super Admin">Super Admin</option>
-              <option value="Desk Officer">Desk Officer</option>
-              <option value="Cyber Specialist">Cyber Specialist</option>
-              <option value="Forensic Analyst">Forensic Analyst</option>
-              <option value="Intelligence Officer">Intelligence Officer</option>
-              <option value="Evidence Custodian">Evidence Custodian</option>
-              <option value="Patrol Officer">Patrol Officer</option>
-            </select>
+            <div className="relative">
+              <select
+                value={newUserRole}
+                onChange={(e) => setNewUserRole(e.target.value)}
+                className="w-full bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-primary transition-colors appearance-none"
+              >
+                <option value="Investigator">Investigator</option>
+                <option value="Supervisor">Supervisor</option>
+                <option value="Super Admin">Super Admin</option>
+                <option value="Desk Officer">Desk Officer</option>
+                <option value="Cyber Specialist">Cyber Specialist</option>
+                <option value="Forensic Analyst">Forensic Analyst</option>
+                <option value="Intelligence Officer">Intelligence Officer</option>
+                <option value="Evidence Custodian">Evidence Custodian</option>
+                <option value="Patrol Officer">Patrol Officer</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-3.5 h-4 w-4 text-gray-500 pointer-events-none" />
+            </div>
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Division / Unit</label>
-            <select
-              value={newUserDivision}
-              onChange={(e) => setNewUserDivision(e.target.value)}
-              className="w-full bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-primary transition-colors appearance-none"
-            >
-              {DIVISIONS.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
+            <div className="relative">
+              <select
+                value={newUserDivision}
+                onChange={(e) => setNewUserDivision(e.target.value)}
+                className="w-full bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-primary transition-colors appearance-none"
+              >
+                {DIVISIONS.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+              <ChevronDown className="absolute right-3 top-3.5 h-4 w-4 text-gray-500 pointer-events-none" />
+            </div>
           </div>
           <div className="p-3 bg-warning/10 border border-warning/20 rounded-lg flex items-start">
             <AlertTriangle className="w-4 h-4 text-warning mr-2 flex-shrink-0 mt-0.5" />
@@ -532,9 +565,9 @@ const AdminSettings = () => {
             <input
               type="text"
               value={newUserName}
-              onChange={(e) => setNewUserName(e.target.value)}
+              onChange={handleFullNameChange}
               className="w-full bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-primary transition-colors placeholder-gray-400 dark:placeholder-gray-600"
-              placeholder="e.g. Insp. Ramesh Kumar"
+              placeholder="e.g. Insp Ramesh Kumar"
             />
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -543,7 +576,7 @@ const AdminSettings = () => {
               <input
                 type="text"
                 value={newUsername}
-                onChange={(e) => setNewUsername(e.target.value)}
+                onChange={handleUsernameChange}
                 className="w-full bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-primary transition-colors placeholder-gray-400 dark:placeholder-gray-600"
                 placeholder="ramesh"
               />
@@ -553,7 +586,7 @@ const AdminSettings = () => {
               <input
                 type="text"
                 value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
+                onChange={handlePasswordChange}
                 className="w-full bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-primary transition-colors placeholder-gray-400 dark:placeholder-gray-600"
                 placeholder="password123"
               />
@@ -561,31 +594,37 @@ const AdminSettings = () => {
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Role Assignment</label>
-            <select
-              value={newUserRole}
-              onChange={(e) => setNewUserRole(e.target.value)}
-              className="w-full bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-primary transition-colors appearance-none"
-            >
-              <option value="Investigator">Investigator</option>
-              <option value="Supervisor">Supervisor</option>
-              <option value="Super Admin">Super Admin</option>
-              <option value="Desk Officer">Desk Officer</option>
-              <option value="Cyber Specialist">Cyber Specialist</option>
-              <option value="Forensic Analyst">Forensic Analyst</option>
-              <option value="Intelligence Officer">Intelligence Officer</option>
-              <option value="Evidence Custodian">Evidence Custodian</option>
-              <option value="Patrol Officer">Patrol Officer</option>
-            </select>
+            <div className="relative">
+              <select
+                value={newUserRole}
+                onChange={(e) => setNewUserRole(e.target.value)}
+                className="w-full bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-primary transition-colors appearance-none"
+              >
+                <option value="Investigator">Investigator</option>
+                <option value="Supervisor">Supervisor</option>
+                <option value="Super Admin">Super Admin</option>
+                <option value="Desk Officer">Desk Officer</option>
+                <option value="Cyber Specialist">Cyber Specialist</option>
+                <option value="Forensic Analyst">Forensic Analyst</option>
+                <option value="Intelligence Officer">Intelligence Officer</option>
+                <option value="Evidence Custodian">Evidence Custodian</option>
+                <option value="Patrol Officer">Patrol Officer</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-3.5 h-4 w-4 text-gray-500 pointer-events-none" />
+            </div>
           </div>
           <div>
             <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-1.5">Division / Unit</label>
-            <select
-              value={newUserDivision}
-              onChange={(e) => setNewUserDivision(e.target.value)}
-              className="w-full bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-primary transition-colors appearance-none"
-            >
-              {DIVISIONS.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
+            <div className="relative">
+              <select
+                value={newUserDivision}
+                onChange={(e) => setNewUserDivision(e.target.value)}
+                className="w-full bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg px-4 py-2.5 text-gray-900 dark:text-white focus:outline-none focus:border-primary transition-colors appearance-none"
+              >
+                {DIVISIONS.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+              <ChevronDown className="absolute right-3 top-3.5 h-4 w-4 text-gray-500 pointer-events-none" />
+            </div>
           </div>
           <div className="pt-4 border-t border-gray-200 dark:border-white/10 flex justify-end space-x-3">
             <button

@@ -40,10 +40,11 @@ function App() {
 
     // Enable Catalyst Web Push Notifications
     try {
-      if (window.catalyst && window.catalyst.notification) {
-        window.catalyst.notification.enableNotification().then((resp: any) => {
+      const win = window as any;
+      if (win.catalyst && win.catalyst.notification) {
+        win.catalyst.notification.enableNotification().then((resp: any) => {
           console.log("Catalyst Push Notifications Enabled:", resp);
-          window.catalyst.notification.messageHandler = (msg: any) => {
+          win.catalyst.notification.messageHandler = (msg: any) => {
             console.log("Received Push Notification:", msg);
             // Optionally, you can trigger a toast notification here
             alert("New Rakshak AI Alert: " + (msg.message || "You have a new notification"));

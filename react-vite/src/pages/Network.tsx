@@ -2,16 +2,16 @@ import { useState, useEffect, useCallback } from 'react';
 import { ReactFlow, MiniMap, Controls, Background, useNodesState, useEdgesState, addEdge } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { generateNetworkFromCase, CASE_MASTERS } from '../utils/mockData';
-import { Network as NetworkIcon, Search, CheckCircle, Zap, ShieldAlert, FileText, User, Link2 } from 'lucide-react';
+import { Network as NetworkIcon, Search, CheckCircle, User, Link2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTimelineStore } from '../store/timelineStore';
-import { useCaseStore, useAssignedCases } from '../store/caseStore';
+import { useAssignedCases } from '../store/caseStore';
 import { useToastStore } from '../store/toastStore';
 import Modal from '../components/Modal';
 
 const Network = () => {
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<any>([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState<any>([]);
   const [selectedNode, setSelectedNode] = useState<any>(null);
   const [selectedEdge, setSelectedEdge] = useState<any>(null);
   const [modalState, setModalState] = useState<{
@@ -138,7 +138,7 @@ const Network = () => {
     let finalEdges = [...(data.edges || [])];
 
     // Dynamically inject links based on timeline events!
-    const evidStyle = { backgroundColor: '#374151', color: '#e5e7eb', border: '1px dashed #9ca3af', borderRadius: '4px', padding: '8px', fontSize: '11px' };
+    const evidStyle: React.CSSProperties = { backgroundColor: '#374151', color: '#e5e7eb', border: '1px dashed #9ca3af', borderRadius: '4px', padding: '8px', fontSize: '11px' };
     
     const validEvents = [
       'Facial Intelligence Logged', 
@@ -248,12 +248,12 @@ const Network = () => {
     setSelectedEdge(null);
   }, [selectedCaseId, events]);
 
-  const onNodeClick = (event: any, node: any) => {
+  const onNodeClick = (_event: any, node: any) => {
     setSelectedNode(node);
     setSelectedEdge(null);
   };
   
-  const onEdgeClick = (event: any, edge: any) => {
+  const onEdgeClick = (_event: any, edge: any) => {
     setSelectedEdge(edge);
     setSelectedNode(null);
   };

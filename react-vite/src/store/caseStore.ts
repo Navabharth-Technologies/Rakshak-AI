@@ -24,7 +24,7 @@ interface CaseStore {
 
 export const useCaseStore = create<CaseStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       cases: INVESTIGATOR_CASES,
       setCases: (cases) => set({ cases }),
       addCase: (newCase) => {

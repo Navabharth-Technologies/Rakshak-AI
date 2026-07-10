@@ -137,7 +137,6 @@ export const generateNetworkFromCase = (caseId: number) => {
     const accusedStyle = { backgroundColor: '#7f1d1d', color: 'white', border: '2px solid #ef4444', borderRadius: '50%', width: 90, height: 90, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: '11px', boxShadow: '0 4px 6px -1px rgba(239, 68, 68, 0.3)' };
     const victimStyle = { backgroundColor: '#14532d', color: 'white', border: '2px solid #22c55e', borderRadius: '8px', padding: '10px', fontSize: '12px' };
     const compStyle = { backgroundColor: '#713f12', color: 'white', border: '2px solid #eab308', borderRadius: '8px', padding: '10px', fontSize: '12px' };
-    const evidStyle = { backgroundColor: '#374151', color: '#e5e7eb', border: '1px dashed #9ca3af', borderRadius: '4px', padding: '8px', fontSize: '11px' };
 
     const caseNodeId = `case-${cMaster.CaseMasterID}`;
     nodes.push({ 

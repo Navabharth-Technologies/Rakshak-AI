@@ -5,7 +5,7 @@ import axios from 'axios';
 import { CASE_MASTERS, STATUS_MASTER, ACCUSED_LIST, VICTIMS, COMPLAINANTS, ACT_SECTIONS, SECTIONS, EMPLOYEES } from '../utils/mockData';
 
 import { useTimelineStore } from '../store/timelineStore';
-import { useCaseStore, useAssignedCases } from '../store/caseStore';
+import { useAssignedCases } from '../store/caseStore';
 
 const CrimeSearch = () => {
   const allEvents = useTimelineStore(state => state.events);
@@ -79,7 +79,7 @@ const CrimeSearch = () => {
       
       setTimeout(() => { // Simulate network delay
         const dynamicEvidence = allEvents
-          .filter(e => e.caseId === selectedCase && (e.title.includes('Intelligence') || e.type === 'evidence' || e.type === 'document' || e.type === 'video'))
+          .filter(e => e.caseId === selectedCase && (e.title.includes('Intelligence') || e.type === 'document' || e.type === 'video'))
           .map(e => e.title);
 
         const combinedEvidence = dynamicEvidence;

@@ -1,7 +1,17 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
-export type Role = 'Super Admin' | 'Investigator' | 'Supervisor' | null;
+export type Role = 
+  | 'Super Admin' 
+  | 'Investigator' 
+  | 'Supervisor' 
+  | 'Desk Officer' 
+  | 'Cyber Specialist' 
+  | 'Forensic Analyst' 
+  | 'Intelligence Officer' 
+  | 'Evidence Custodian' 
+  | 'Patrol Officer' 
+  | null;
 
 interface AuthState {
   isAuthenticated: boolean;

@@ -1,12 +1,11 @@
 import { useState, useEffect } from 'react'; 
 import { motion, AnimatePresence } from 'framer-motion';
-import { QrCode, UploadCloud, Search, Filter, ScanLine, Activity, Image as ImageIcon, Download, Link, Link2, Box } from 'lucide-react';
+import { QrCode, UploadCloud, Search, ScanLine, Activity, Image as ImageIcon, Download, Link, Link2, Box } from 'lucide-react';
 import { useToastStore } from '../store/toastStore';
 import { useTimelineStore } from '../store/timelineStore';
-import { useCaseStore, useAssignedCases } from '../store/caseStore';
+import { useAssignedCases } from '../store/caseStore';
 
 const MOCK_BARCODES: any[] = [];
-const CHAIN_OF_CUSTODY: any[] = [];
 
 const BarcodeIntelligence = () => {
   const [activeTab, setActiveTab] = useState<'scanner' | 'dashboard' | 'custody'>('dashboard');
@@ -14,16 +13,21 @@ const BarcodeIntelligence = () => {
   const [processingState, setProcessingState] = useState<'idle' | 'scanning' | 'complete'>('idle');
   const [scannedResult, setScannedResult] = useState<any>(null);
   const [sessionBarcodes, setSessionBarcodes] = useState<any[]>(MOCK_BARCODES);
-  const [targetCaseId, setTargetCaseId] = useState('104430006202600001');
+  const cases = useAssignedCases();
+  const activeCases = cases.filter((c: any) => c.status !== 'Completed');
+  const [targetCaseId, setTargetCaseId] = useState('');
   const { addToast } = useToastStore();
   const { addEvent } = useTimelineStore();
-  const cases = useAssignedCases();
+
+  const handleExport = () => {
+    addToast('Audit log exported successfully', 'success');
+  };
 
   useEffect(() => {
-    if (cases.length > 0 && !cases.find(c => c.id === targetCaseId)) {
-      setTargetCaseId(cases[0].id);
+    if (activeCases.length > 0 && !targetCaseId) {
+      setTargetCaseId(activeCases[0].id);
     }
-  }, [cases, targetCaseId]);
+  }, [activeCases, targetCaseId]);
 
   const handleIndexToCase = () => {
     if (!scannedResult) return;
@@ -45,7 +49,7 @@ const BarcodeIntelligence = () => {
       caseId: targetCaseId,
       title: 'Barcode Asset Logged',
       desc: `Asset ${scannedResult.content} logged to Chain of Custody.`,
-      type: 'evidence',
+      type: 'document',
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       iconName: 'ScanLine',
@@ -123,7 +127,7 @@ const BarcodeIntelligence = () => {
           <p className="text-sm text-gray-400 mt-1">Universal Barcode & QR Intelligence Engine for digital chain of custody</p>
         </div>
         <div className="flex space-x-2">
-          <button className="bg-white/5 hover:bg-white/10 text-gray-300 px-3 py-1.5 rounded-lg text-sm flex items-center transition-colors">
+          <button onClick={handleExport} className="bg-primary hover:bg-primary/80 text-white shadow-lg shadow-primary/25 px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center">
             <Download className="w-4 h-4 mr-2" /> Export Audit Log
           </button>
         </div>
@@ -205,16 +209,16 @@ const BarcodeIntelligence = () => {
                           <select 
                             value={targetCaseId}
                             onChange={(e) => setTargetCaseId(e.target.value)}
-                            className="bg-black/50 border border-white/10 text-white text-xs rounded px-2 py-1 focus:outline-none focus:border-cyan-400"
+                            className="bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 text-gray-800 dark:text-white text-xs rounded px-2 py-1 focus:outline-none focus:border-cyan-400"
                           >
-                            {cases.filter((c: any) => c.status !== 'Completed').map((c: any) => (
+                            {activeCases.map((c: any) => (
                               <option key={c.id} value={c.id}>
                                 {c.id} — {c.type} ({c.status})
                               </option>
                             ))}
                           </select>
                         </div>
-                        <button onClick={handleIndexToCase} className="bg-success/20 hover:bg-success/30 text-success px-3 py-1.5 rounded text-xs font-semibold transition-colors flex items-center">
+                        <button onClick={handleIndexToCase} className="bg-success/10 dark:bg-success/20 hover:bg-success/20 dark:hover:bg-success/30 text-success px-3 py-1.5 rounded text-xs font-semibold transition-colors flex items-center">
                            <Link className="w-3 h-3 mr-1.5" /> Index to Case
                         </button>
                       </div>
@@ -274,7 +278,7 @@ const BarcodeIntelligence = () => {
                             </div>
                             <button
                               onClick={() => { setProcessingState('idle'); setFile(null); }}
-                              className="mt-6 w-full bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-300 py-2 rounded-lg text-sm transition-colors border border-cyan-500/30"
+                              className="mt-6 w-full bg-cyan-100 dark:bg-cyan-500/20 hover:bg-cyan-200 dark:hover:bg-cyan-500/30 text-cyan-700 dark:text-cyan-300 py-2 rounded-lg text-sm transition-colors border border-cyan-300 dark:border-cyan-500/30"
                             >
                               Upload Another Barcode
                             </button>
@@ -384,6 +388,22 @@ const BarcodeIntelligence = () => {
 
           {activeTab === 'custody' && (() => {
             const custodyItem = sessionBarcodes[0] || MOCK_BARCODES[0];
+
+            if (!custodyItem) {
+              return (
+                <motion.div
+                  key="custody"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="glass p-12 rounded-xl text-center text-gray-500 mt-10 border border-white/10"
+                >
+                  <Link className="w-16 h-16 mx-auto mb-4 opacity-50 text-cyan-400" />
+                  <p>No custody data available. Scan a barcode to initiate chain of custody tracking.</p>
+                </motion.div>
+              );
+            }
+
             const dynamicChain = [
               { step: 1, title: 'Evidence Collected', officer: 'Insp. Ramesh', loc: 'Crime Scene (MG Road)', time: 'July 1, 09:00 AM' },
               { step: 2, title: 'Transported to Station', officer: 'Const. Suresh', loc: 'Central Police Station', time: 'July 1, 10:00 AM' },

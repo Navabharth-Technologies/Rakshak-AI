@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { BoxSelect, UploadCloud, Search, Filter, Crosshair, Activity, Image as ImageIcon, Download, Layers, ShieldAlert, ChevronLeft, ChevronRight, ThumbsUp } from 'lucide-react';
+import { BoxSelect, UploadCloud, Search, Filter, Crosshair, Activity, Download, Layers, ShieldAlert, ChevronLeft, ChevronRight, ThumbsUp } from 'lucide-react';
 import { useToastStore } from '../store/toastStore';
 import { useTimelineStore } from '../store/timelineStore';
-import { useCaseStore, useAssignedCases } from '../store/caseStore';
+import { useAssignedCases } from '../store/caseStore';
 
 const MOCK_OBJECTS: any[] = [];
 
@@ -14,17 +14,18 @@ const ObjectIntelligence = () => {
   const [detectedObjects, setDetectedObjects] = useState<any[]>([]);
   const [selectedObjectIdx, setSelectedObjectIdx] = useState<number | null>(null);
   const [imgDimensions, setImgDimensions] = useState({ width: 800, height: 600 });
-  const [targetCaseId, setTargetCaseId] = useState('104430006202600001');
+  const cases = useAssignedCases();
+  const activeCases = cases.filter((c: any) => c.status !== 'Completed');
+  const [targetCaseId, setTargetCaseId] = useState('');
   const [sessionObjects, setSessionObjects] = useState<any[]>(MOCK_OBJECTS);
   const { addToast } = useToastStore();
   const { addEvent } = useTimelineStore();
-  const cases = useAssignedCases();
 
   useEffect(() => {
-    if (cases.length > 0 && !cases.find(c => c.id === targetCaseId)) {
-      setTargetCaseId(cases[0].id);
+    if (activeCases.length > 0 && !targetCaseId) {
+      setTargetCaseId(activeCases[0].id);
     }
-  }, [cases, targetCaseId]);
+  }, [activeCases, targetCaseId]);
 
   const handleIndexToCase = () => {
     const newItems = detectedObjects.map(o => {
@@ -51,7 +52,7 @@ const ObjectIntelligence = () => {
       caseId: targetCaseId,
       title: 'Object Evidence Extracted',
       desc: `${detectedObjects.length} objects extracted and indexed.`,
-      type: 'evidence',
+      type: 'image',
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       iconName: 'BoxSelect',
@@ -203,7 +204,7 @@ const ObjectIntelligence = () => {
           <p className="text-sm text-gray-400 mt-1">Multi-class object detection, localization, and evidence clustering</p>
         </div>
         <div className="flex space-x-2">
-          <button onClick={handleExport} className="bg-white/5 hover:bg-white/10 text-gray-300 px-3 py-1.5 rounded-lg text-sm flex items-center transition-colors">
+          <button onClick={handleExport} className="bg-primary hover:bg-primary/80 text-white shadow-lg shadow-primary/25 px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center">
             <Download className="w-4 h-4 mr-2" /> Export Data
           </button>
         </div>
@@ -286,14 +287,15 @@ const ObjectIntelligence = () => {
                           <select 
                             value={targetCaseId}
                             onChange={(e) => setTargetCaseId(e.target.value)}
-                            className="bg-black/50 border border-white/10 text-white text-xs rounded px-2 py-1 focus:outline-none focus:border-primary"
+                            className="bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 text-gray-800 dark:text-white text-xs rounded px-2 py-1 focus:outline-none focus:border-primary"
                           >
-                            {cases.filter((c: any) => c.status !== 'Completed').map((c: any) => (
-                              <option key={c.id} value={c.id}>{c.id} — {c.type} ({c.status})</option>
-                            ))}
-                          </select>
+                            {activeCases.map((c: any) => (
+                            <option key={c.id} value={c.id}>
+                              {c.id} — {c.type} ({c.status})
+                            </option>
+                          ))}</select>
                         </div>
-                        <button onClick={handleIndexToCase} className="bg-success/20 hover:bg-success/30 text-success px-3 py-1.5 rounded text-xs font-semibold transition-colors flex items-center">
+                        <button onClick={handleIndexToCase} className="bg-success/10 dark:bg-success/20 hover:bg-success/20 dark:hover:bg-success/30 text-success px-3 py-1.5 rounded text-xs font-semibold transition-colors flex items-center">
                            <ShieldAlert className="w-3 h-3 mr-1.5" /> Index to Case
                         </button>
                         <button 
@@ -313,8 +315,6 @@ const ObjectIntelligence = () => {
                         {/* Dynamic Bounding Boxes */}
                         <div className="absolute inset-0 max-w-full max-h-full m-auto" style={{ aspectRatio: `${imgDimensions.width} / ${imgDimensions.height}` }}>
                           {detectedObjects.map((obj, idx) => {
-                              // Ensure we handle both upper/lower case variations for confidence and bounding box properties
-                              const confidence = obj.confidence || obj.Confidence || 0;
                               let box = obj.co_ordinates || obj.bounding_box || obj.box || null;
                               
                               if (!box) return null;
@@ -539,17 +539,17 @@ const ObjectIntelligence = () => {
               exit={{ opacity: 0, y: -10 }}
               className="space-y-6"
             >
-              <div className="flex justify-between items-center bg-black/30 p-4 rounded-xl border border-white/5">
+              <div className="flex justify-between items-center bg-gray-100 dark:bg-black/30 p-4 rounded-xl border border-gray-200 dark:border-white/5">
                 <div className="flex space-x-4">
                   <div className="relative">
                     <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                    <input type="text" placeholder="Search Object Clusters (e.g. 'Red Motorcycle')..." className="bg-black/50 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-primary w-80" />
+                    <input type="text" placeholder="Search Object Clusters (e.g. 'Red Motorcycle')..." className="bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm text-gray-800 dark:text-white focus:outline-none focus:border-primary w-80" />
                   </div>
-                  <button className="bg-white/5 hover:bg-white/10 px-4 py-2 rounded-lg text-sm text-gray-300 flex items-center transition-colors">
+                  <button className="bg-gray-200 dark:bg-white/5 hover:bg-gray-300 dark:hover:bg-white/10 px-4 py-2 rounded-lg text-sm text-gray-700 dark:text-gray-300 flex items-center transition-colors">
                     <Filter className="w-4 h-4 mr-2" /> Categories
                   </button>
                 </div>
-                <button className="text-sm bg-primary/20 text-primary px-3 py-1.5 rounded-lg flex items-center hover:bg-primary/30 transition-colors">
+                <button className="text-sm bg-primary/10 dark:bg-primary/20 text-primary px-3 py-1.5 rounded-lg flex items-center hover:bg-primary/20 dark:hover:bg-primary/30 transition-colors">
                   <Layers className="w-4 h-4 mr-2" /> Auto-Cluster Active Cases
                 </button>
               </div>

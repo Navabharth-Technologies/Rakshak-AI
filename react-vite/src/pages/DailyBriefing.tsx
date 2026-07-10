@@ -1,38 +1,20 @@
 import { useState, useMemo } from 'react';
-import { Activity, AlertTriangle, ChevronRight, FileText, TrendingUp, ShieldAlert, Users, PlayCircle, CheckCircle2, Clock } from 'lucide-react';
+import { Activity, AlertTriangle, ChevronRight, FileText, TrendingUp, ShieldAlert, Users, PlayCircle, CheckCircle2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
 import { useTimelineStore } from '../store/timelineStore';
 import { useToastStore } from '../store/toastStore';
 import { useCaseStore } from '../store/caseStore';
-import { useUserStore } from '../store/userStore';
 
 const DailyBriefing = () => {
   const navigate = useNavigate();
   const events = useTimelineStore(state => state.events);
   const { cases } = useCaseStore();
-  const { users } = useUserStore();
   const { addToast } = useToastStore();
   const { addEvent } = useTimelineStore();
   const [assignedActions, setAssignedActions] = useState<number[]>([]);
-  const [isRunningCron, setIsRunningCron] = useState(false);
-
-  const handleRunCron = async () => {
-    setIsRunningCron(true);
-    try {
-      const response = await axios.post('/server/rakshak_function/api/cron/daily-briefing');
-      addToast(response.data.message, 'success');
-      addEvent('cron_run', 'Daily Briefing Cron Job Executed', 'Nightly intelligence aggregated via Catalyst Job Scheduler.', 'action');
-    } catch (error) {
-      console.error(error);
-      addToast('Cron job execution failed.', 'error');
-    }
-    setIsRunningCron(false);
-  };
 
   // ---- Real-time case stats ----
   const activeCases = useMemo(() => cases.filter(c => c.status !== 'Closed' && c.status !== 'Completed'), [cases]);
-  const highPriorityCases = useMemo(() => activeCases.filter(c => c.priority === 'High'), [activeCases]);
   const cyberFraudCases = useMemo(() =>
     activeCases.filter(c => c.type?.toLowerCase().includes('cyber') || c.type?.toLowerCase().includes('fraud')),
     [activeCases]
@@ -67,17 +49,6 @@ const DailyBriefing = () => {
   // ---- Generate real AutoML Prescriptive Actions ----
   const dynamicActions = useMemo(() => {
     const actions: { title: string; desc: string; type: string; caseId?: string }[] = [];
-
-    // Action 1: High priority cases due today
-    if (highPriorityCases.length > 0) {
-      const caseIds = highPriorityCases.slice(0, 3).map(c => c.id).join(', ');
-      actions.push({
-        title: 'Prioritize High-Risk Cases Immediately',
-        desc: `${highPriorityCases.length} high-priority case(s) require immediate attention: ${caseIds}. Assign dedicated resources and expedite investigation.`,
-        type: 'danger',
-        caseId: highPriorityCases[0]?.id
-      });
-    }
 
     // Action 2: Cyber/Fraud spike
     if (cyberFraudCases.length > 0) {
@@ -120,10 +91,10 @@ const DailyBriefing = () => {
     }
 
     return actions.slice(0, 3);
-  }, [highPriorityCases, cyberFraudCases, busiestOfficer, activeCases, cases]);
+  }, [cyberFraudCases, busiestOfficer, activeCases, cases]);
 
   // ---- Key Investigation Summaries from real timeline events ----
-  const latestEvents = useMemo(() => [...events].reverse().slice(0, 5), [events]);
+  const latestEvents = useMemo(() => [...events].filter(e => e && e.title && e.desc).reverse().slice(0, 5), [events]);
 
   const handleReviewEvent = (caseId: string) => {
     navigate(`/timeline?caseId=${caseId}`);
@@ -165,13 +136,7 @@ const DailyBriefing = () => {
           <p className="text-lg font-bold text-white mb-2">
             {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
           </p>
-          <button 
-            onClick={handleRunCron}
-            disabled={isRunningCron}
-            className="flex items-center px-3 py-1.5 bg-primary/20 hover:bg-primary/30 border border-primary/50 text-primary rounded-lg text-xs transition-colors"
-          >
-            <Clock className="w-3 h-3 mr-1" /> {isRunningCron ? 'Running...' : 'Trigger Nightly Cron (Catalyst)'}
-          </button>
+
         </div>
       </div>
 
@@ -179,8 +144,8 @@ const DailyBriefing = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* Card 1: Cyber/Fraud Cases */}
         <div className={`glass p-6 rounded-xl border-l-4 ${cyberFraudCases.length > 3 ? 'border-l-danger' : 'border-l-warning'}`}>
-          <h3 className="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2 flex items-center">
-            {cyberFraudCases.length > 3 ? <TrendingUp className="w-4 h-4 mr-2 text-danger" /> : <Activity className="w-4 h-4 mr-2" />}
+          <h3 className={`text-sm font-semibold uppercase tracking-wider mb-2 flex items-center ${cyberFraudCases.length > 3 ? 'text-danger' : 'text-warning'}`}>
+            {cyberFraudCases.length > 3 ? <TrendingUp className="w-4 h-4 mr-2 text-danger" /> : <Activity className="w-4 h-4 mr-2 text-warning" />}
             Active Cyber/Fraud Cases
           </h3>
           <p className="text-3xl font-bold text-white mb-2">{cyberFraudCases.length}</p>
@@ -194,8 +159,8 @@ const DailyBriefing = () => {
 
         {/* Card 2: Highest Workload Officer */}
         <div className="glass p-6 rounded-xl border-l-4 border-l-warning">
-          <h3 className="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2 flex items-center">
-            <Users className="w-4 h-4 mr-2" /> Highest Workload Officer
+          <h3 className="text-warning text-sm font-semibold uppercase tracking-wider mb-2 flex items-center">
+            <Users className="w-4 h-4 mr-2 text-warning" /> Highest Workload Officer
           </h3>
           {busiestOfficer ? (
             <>
@@ -209,8 +174,8 @@ const DailyBriefing = () => {
 
         {/* Card 3: Top Performing Officer */}
         <div className="glass p-6 rounded-xl border-l-4 border-l-success">
-          <h3 className="text-gray-400 text-sm font-semibold uppercase tracking-wider mb-2 flex items-center">
-            <ShieldAlert className="w-4 h-4 mr-2" /> Top Performing Officer
+          <h3 className="text-success text-sm font-semibold uppercase tracking-wider mb-2 flex items-center">
+            <ShieldAlert className="w-4 h-4 mr-2 text-success" /> Top Performing Officer
           </h3>
           {topOfficer ? (
             <>

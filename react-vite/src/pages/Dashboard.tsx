@@ -1,8 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState, useMemo } from 'react';
-import { KPI_DATA, MONTHLY_CRIME_DATA, RECENT_ACTIVITIES, INVESTIGATOR_CASES, SUPERVISOR_TEAMS, EMPLOYEES } from '../utils/mockData';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, AreaChart, Area, PieChart, Pie, Cell, Legend } from 'recharts';
-import { Users, FileText, AlertTriangle, CheckCircle, Clock, Shield, Activity, FileWarning, TrendingUp, Globe, Database, Download } from 'lucide-react';
+import { Users, FileText, AlertTriangle, CheckCircle, Shield, Activity, FileWarning, Database, Download } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 const KPICard = ({ title, value, icon: Icon, color }: any) => (
@@ -29,26 +27,57 @@ import jsPDF from 'jspdf';
 
 const DeskOfficerDashboard = () => {
   const { cases, addCase } = useCaseStore();
-  const { users } = useUserStore();
   const { user } = useAuthStore();
   const [isFirModalOpen, setFirModalOpen] = useState(false);
+  const [selectedFir, setSelectedFir] = useState<any>(null);
   const { addToast } = useToastStore();
 
-  // Local Karnataka fallback lookup (used if Nominatim fails)
+  // Full Karnataka district + landmark coordinate lookup
   const KARNATAKA_COORDS: Record<string, [number, number]> = {
+    // Major cities & landmarks
     'ramakrishna nagar': [12.2828, 76.6235], 'ramakrishnagar': [12.2828, 76.6235],
-    'agrahara': [12.2985, 76.6521], 'mysuru': [12.2958, 76.6394], 'mysore': [12.2958, 76.6394],
-    'bengaluru': [12.9716, 77.5946], 'bangalore': [12.9716, 77.5946],
+    'agrahara': [12.2985, 76.6521],
     'vijayanagar': [12.9560, 77.5350], 'hebbal': [13.0354, 77.5988],
     'koramangala': [12.9352, 77.6245], 'jayanagar': [12.9308, 77.5831],
-    'indiranagar': [12.9784, 77.6408], 'whitefield': [12.9698, 77.7499],
-    'hubballi': [15.3647, 75.1240], 'hubli': [15.3647, 75.1240],
-    'mangaluru': [12.9141, 74.8560], 'mangalore': [12.9141, 74.8560],
-    'belagavi': [15.8497, 74.4977], 'belgaum': [15.8497, 74.4977],
-    'davangere': [14.4644, 75.9218], 'shivamogga': [13.9299, 75.5681],
-    'udupi': [13.3409, 74.7421], 'tumkur': [13.3379, 77.1173],
+    'jp nagar': [12.9107, 77.5857], 'indiranagar': [12.9784, 77.6408],
+    'whitefield': [12.9698, 77.7499], 'electronic city': [12.8399, 77.6770],
     'om beach': [14.7133, 74.3183], 'gokarna': [14.5479, 74.3188],
     'malpe beach': [13.3533, 74.6938], 'panambur beach': [12.9636, 74.8060],
+    // All 31 Karnataka districts (used as fallback when location string matches district)
+    'bengaluru': [12.9716, 77.5946], 'bangalore': [12.9716, 77.5946],
+    'bengaluru rural': [13.1986, 77.5682],
+    'mysuru': [12.2958, 76.6394], 'mysore': [12.2958, 76.6394],
+    'hubballi': [15.3647, 75.1240], 'hubli': [15.3647, 75.1240],
+    'dharwad': [15.4589, 75.0078],
+    'mangaluru': [12.9141, 74.8560], 'mangalore': [12.9141, 74.8560],
+    'belagavi': [15.8497, 74.4977], 'belgaum': [15.8497, 74.4977],
+    'kalaburagi': [17.3297, 76.8343], 'gulbarga': [17.3297, 76.8343],
+    'davangere': [14.4644, 75.9218],
+    'ballari': [15.1394, 76.9214], 'bellary': [15.1394, 76.9214],
+    'tumakuru': [13.3379, 77.1173], 'tumkur': [13.3379, 77.1173],
+    'shivamogga': [13.9299, 75.5681], 'shimoga': [13.9299, 75.5681],
+    'vijayapura': [16.8302, 75.7100], 'bijapur': [16.8302, 75.7100],
+    'raichur': [16.2120, 77.3566],
+    'udupi': [13.3409, 74.7421],
+    'hassan': [13.0068, 76.0996],
+    'chikkamagaluru': [13.3161, 75.7720], 'chikmagalur': [13.3161, 75.7720],
+    'kodagu': [12.4244, 75.7382], 'madikeri': [12.4244, 75.7382], 'coorg': [12.4244, 75.7382],
+    'mandya': [12.5218, 76.8951],
+    'chamarajanagar': [11.9261, 76.9437],
+    'chikkaballapur': [13.4355, 77.7315],
+    'chitradurga': [14.2251, 76.4020],
+    'gadag': [15.4316, 75.6269],
+    'koppal': [15.3474, 76.1547],
+    'bagalkote': [16.1691, 75.6960], 'bagalkot': [16.1691, 75.6960],
+    'bidar': [17.9104, 77.5199],
+    'yadgir': [16.7689, 77.1381],
+    'haveri': [14.7957, 75.4004],
+    'uttara kannada': [14.9807, 74.5815], 'karwar': [14.8136, 74.1285],
+    'dakshina kannada': [12.8700, 75.2479],
+    'kolar': [13.1360, 78.1294],
+    'ramanagara': [12.7161, 77.2820],
+    'vijayanagara': [15.1394, 76.9214],
+    'bengaluru north': [13.0827, 77.5878],
   };
 
   const handleNewFir = async (e: any) => {
@@ -119,7 +148,6 @@ const DeskOfficerDashboard = () => {
       caseNo: `${year}${serial}`,
       type: incidentType.toString(),
       status: 'Initial Review',
-      priority: 'High',
       assignee: 'Unassigned',
       complainantName,
       victimName,
@@ -137,6 +165,12 @@ const DeskOfficerDashboard = () => {
     setFirModalOpen(false);
   };
 
+  const handleStrictNameInput = (e: React.FormEvent<HTMLInputElement>) => {
+    let val = e.currentTarget.value.replace(/[^a-zA-Z]/g, '');
+    val = val.replace(/(.)\1\1/gi, '$1$1');
+    e.currentTarget.value = val;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -152,42 +186,48 @@ const DeskOfficerDashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {cases.filter(c => c.creator === user?.name || c.assignee === 'Unassigned').map(c => (
-          <motion.div key={c.id} whileHover={{ y: -4 }} className="glass p-5 rounded-xl border-l-4 border-l-primary flex flex-col justify-between h-40">
+        {cases.map(c => (
+          <motion.div
+            key={c.id}
+            whileHover={{ y: -4, boxShadow: '0 8px 30px rgba(99,102,241,0.25)' }}
+            onClick={() => setSelectedFir(c)}
+            className="glass p-5 rounded-xl border-l-4 border-l-primary flex flex-col justify-between h-40 cursor-pointer group"
+          >
              <div>
                 <div className="flex justify-between items-start mb-2">
-                  <span className="text-xs font-bold text-gray-400">{c.id}</span>
+                  <span className="text-xs font-bold text-gray-400 font-mono">{c.id}</span>
                   <span className="text-[10px] px-2 py-1 rounded-full bg-primary/20 text-primary font-bold uppercase">{c.status}</span>
                 </div>
-                <h4 className="font-semibold text-white truncate mb-1">{c.type}</h4>
+                <h4 className="font-semibold text-white truncate mb-1 group-hover:text-primary transition-colors">{c.type}</h4>
                 <p className="text-xs text-gray-500">Complainant: {c.complainantName}</p>
              </div>
-             <div className="text-xs text-gray-600 mt-2">
-               Assignee: {c.assignee}
+             <div className="flex justify-between items-center mt-2">
+               <span className="text-xs text-gray-600">Assignee: {c.assignee}</span>
+               <span className="text-[10px] text-primary opacity-0 group-hover:opacity-100 transition-opacity font-medium">View Details →</span>
              </div>
           </motion.div>
         ))}
-        {cases.filter(c => c.creator === user?.name || c.assignee === 'Unassigned').length === 0 && (
+        {cases.length === 0 && (
           <div className="col-span-full text-center text-gray-500 py-10 glass rounded-xl">
             No FIRs filed recently.
           </div>
         )}
       </div>
 
-      <Modal isOpen={isFirModalOpen} onClose={() => setFirModalOpen(false)} title="File New FIR">
+      <Modal isOpen={isFirModalOpen} onClose={() => setFirModalOpen(false)} title="File New FIR" maxWidth="max-w-3xl">
         <form onSubmit={handleNewFir} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm text-gray-400 mb-1">Complainant Name <span className="text-danger">*</span></label>
-              <input name="complainantName" required type="text" className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm focus:border-primary focus:outline-none transition-colors" placeholder="Enter full name" />
+              <input name="complainantName" onInput={handleStrictNameInput} required type="text" className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm focus:border-primary focus:outline-none transition-colors" placeholder="Enter full name" />
             </div>
             <div>
               <label className="block text-sm text-gray-400 mb-1">Victim Name</label>
-              <input name="victimName" type="text" className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm focus:border-primary focus:outline-none transition-colors" placeholder="Enter full name (if known)" />
+              <input name="victimName" onInput={handleStrictNameInput} type="text" className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm focus:border-primary focus:outline-none transition-colors" placeholder="Enter full name (if known)" />
             </div>
-            <div>
+            <div className="md:col-span-2">
               <label className="block text-sm text-gray-400 mb-1">Primary Suspect Name</label>
-              <input name="suspectName" type="text" className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm focus:border-primary focus:outline-none transition-colors" placeholder="Enter name (if known)" />
+              <input name="suspectName" onInput={handleStrictNameInput} type="text" className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm focus:border-primary focus:outline-none transition-colors" placeholder="Enter name (if known)" />
             </div>
           </div>
           
@@ -225,15 +265,41 @@ const DeskOfficerDashboard = () => {
               <label className="block text-sm text-gray-400 mb-1">District <span className="text-danger">*</span></label>
               <select name="district" required defaultValue="Bengaluru" className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm focus:border-primary focus:outline-none transition-colors">
                 <option value="Bengaluru">Bengaluru</option>
+                <option value="Bengaluru Rural">Bengaluru Rural</option>
                 <option value="Mysuru">Mysuru</option>
-                <option value="Hubballi">Hubballi</option>
-                <option value="Mangaluru">Mangaluru</option>
+                <option value="Hubballi-Dharwad">Hubballi-Dharwad</option>
+                <option value="Mangaluru">Mangaluru (Dakshina Kannada)</option>
                 <option value="Belagavi">Belagavi</option>
+                <option value="Kalaburagi">Kalaburagi</option>
+                <option value="Davangere">Davangere</option>
+                <option value="Ballari">Ballari</option>
+                <option value="Tumakuru">Tumakuru</option>
+                <option value="Shivamogga">Shivamogga</option>
+                <option value="Vijayapura">Vijayapura</option>
+                <option value="Raichur">Raichur</option>
+                <option value="Udupi">Udupi</option>
+                <option value="Hassan">Hassan</option>
+                <option value="Chikkamagaluru">Chikkamagaluru</option>
+                <option value="Kodagu">Kodagu (Coorg)</option>
+                <option value="Mandya">Mandya</option>
+                <option value="Chamarajanagar">Chamarajanagar</option>
+                <option value="Chikkaballapur">Chikkaballapur</option>
+                <option value="Chitradurga">Chitradurga</option>
+                <option value="Gadag">Gadag</option>
+                <option value="Koppal">Koppal</option>
+                <option value="Bagalkote">Bagalkote</option>
+                <option value="Bidar">Bidar</option>
+                <option value="Yadgir">Yadgir</option>
+                <option value="Haveri">Haveri</option>
+                <option value="Uttara Kannada">Uttara Kannada</option>
+                <option value="Kolar">Kolar</option>
+                <option value="Ramanagara">Ramanagara</option>
+                <option value="Vijayanagara">Vijayanagara</option>
               </select>
             </div>
             <div>
               <label className="block text-sm text-gray-400 mb-1">Location of Incident <span className="text-danger">*</span></label>
-              <input name="incidentLocation" required type="text" className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm focus:border-primary focus:outline-none transition-colors" placeholder="Enter address or landmark" />
+              <input name="incidentLocation" onInput={handleStrictNameInput} required type="text" className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm focus:border-primary focus:outline-none transition-colors" placeholder="Enter address or landmark" />
             </div>
           </div>
 
@@ -249,12 +315,79 @@ const DeskOfficerDashboard = () => {
           </div>
         </form>
       </Modal>
+
+      {/* FIR Detail Modal */}
+      <Modal isOpen={!!selectedFir} onClose={() => setSelectedFir(null)} title="FIR Details" maxWidth="max-w-2xl">
+        {selectedFir && (
+          <div className="space-y-5 text-sm">
+            {/* Header banner */}
+            <div className="bg-primary/10 border border-primary/30 rounded-xl p-4 flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-400 mb-0.5">Crime Reference Number</p>
+                <p className="text-lg font-bold text-primary font-mono">{selectedFir.id}</p>
+              </div>
+              <span className="text-[11px] px-3 py-1.5 rounded-full bg-primary/20 text-primary font-bold uppercase">{selectedFir.status}</span>
+            </div>
+
+            {/* 2-col grid of fields */}
+            <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+              <div>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Incident Type</p>
+                <p className="text-gray-100 font-medium">{selectedFir.type || '—'}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Complainant Name</p>
+                <p className="text-gray-100">{selectedFir.complainantName || '—'}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Victim Name</p>
+                <p className="text-gray-100">{selectedFir.victimName || '—'}</p>
+              </div>
+              <div className="col-span-2 bg-black/20 p-3 rounded-lg border border-white/5">
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Primary Suspect</p>
+                <p className="text-gray-100 font-medium">{selectedFir.suspectName || 'Unknown'}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Assigned To</p>
+                <p className="text-gray-100">{selectedFir.assignee || 'Unassigned'}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">District</p>
+                <p className="text-gray-100">{selectedFir.district || '—'}</p>
+              </div>
+              <div>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Date Filed</p>
+                <p className="text-gray-100">{selectedFir.date || '—'}</p>
+              </div>
+            </div>
+
+            {/* Location */}
+            {selectedFir.location && (
+              <div>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Location of Incident</p>
+                <p className="text-gray-100 bg-black/20 rounded-lg p-3">{selectedFir.location}</p>
+              </div>
+            )}
+
+            {/* Filed By */}
+            <div className="pt-3 border-t border-white/10 flex items-center justify-between">
+              <p className="text-xs text-gray-500">Filed by: <span className="text-gray-300 font-medium">{selectedFir.creator || user?.name || 'Unknown'}</span></p>
+              <button
+                onClick={() => setSelectedFir(null)}
+                className="text-xs bg-white/10 hover:bg-primary/30 text-gray-300 hover:text-white px-4 py-1.5 rounded-lg transition-colors"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };
 
 const InvestigatorDashboard = () => {
-  const { cases, removeCase, updateCase } = useCaseStore();
+  const { cases, updateCase } = useCaseStore();
   const { users } = useUserStore();
   const { user } = useAuthStore();
   const [selectedCase, setSelectedCase] = useState<any>(null);
@@ -299,7 +432,6 @@ const InvestigatorDashboard = () => {
       doc.text(`Case ID: ${caseToDownload.id}`, 20, 40);
       doc.text(`Required Evidence: ${requiredEvidence}`, 20, 50);
       doc.text(`Current Status: ${caseToDownload.status}`, 20, 60);
-      doc.text(`Priority Level: ${caseToDownload.priority}`, 20, 70);
 
       doc.setLineWidth(0.5);
       doc.line(20, 90, 190, 90);
@@ -363,9 +495,6 @@ const InvestigatorDashboard = () => {
               <div>
                 <div className="flex justify-between items-start mb-2">
                   <span className="text-xs font-bold text-gray-400">{c.id}</span>
-                  <span className={`text-[10px] px-2 py-1 rounded-full ${c.priority === 'High' ? 'bg-danger/20 text-danger' : c.priority === 'Medium' ? 'bg-warning/20 text-warning' : 'bg-success/20 text-success'}`}>
-                    {c.priority} Priority
-                  </span>
                 </div>
                 <h4 className="font-semibold text-white truncate mb-1">{c.type}</h4>
                 <div onClick={(e) => e.stopPropagation()}>
@@ -466,7 +595,6 @@ const InvestigatorDashboard = () => {
             <p><strong>FIR Number:</strong> {selectedCase.id}</p>
             <p><strong>Type:</strong> {selectedCase.type}</p>
             <p><strong>Status:</strong> {selectedCase.status}</p>
-            <p><strong>Priority:</strong> {selectedCase.priority}</p>
             <div className="pt-4 border-t border-white/10 flex space-x-3">
               <button onClick={handleDownload} className="bg-primary/20 hover:bg-primary/40 text-primary px-4 py-2 rounded-lg text-sm transition-colors">
                 Download Full Report
@@ -656,7 +784,6 @@ const SupervisorDashboard = () => {
       doc.text(`Case ID: ${caseToDownload.id}`, 20, 40);
       doc.text(`Required Evidence: ${requiredEvidence}`, 20, 50);
       doc.text(`Current Status: ${caseToDownload.status}`, 20, 60);
-      doc.text(`Priority Level: ${caseToDownload.priority}`, 20, 70);
 
       doc.setLineWidth(0.5);
       doc.line(20, 90, 190, 90);
@@ -728,18 +855,18 @@ const SupervisorDashboard = () => {
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-white/10 text-gray-400 text-sm">
-                  <th className="pb-3 px-4 font-medium">Unit / Division</th>
-                  <th className="pb-3 px-4 font-medium">Lead Officer</th>
-                  <th className="pb-3 px-4 font-medium">Active Cases</th>
-                  <th className="pb-3 px-4 font-medium text-right">Clearance Rate</th>
+                <tr className="border-b-2 border-primary/50 text-white font-bold text-xs uppercase tracking-wider bg-black/20">
+                  <th className="py-3 px-4">Unit / Division</th>
+                  <th className="py-3 px-4">Lead Officer</th>
+                  <th className="py-3 px-4">Active Cases</th>
+                  <th className="py-3 px-4 text-right">Clearance Rate</th>
                 </tr>
               </thead>
               <tbody>
-                {dynamicTeams.map((team, idx) => (
+                {dynamicTeams.map((team) => (
                   <tr 
                     key={team.id} 
-                    className={idx !== dynamicTeams.length - 1 ? 'border-b border-white/5 hover:bg-white/10 transition-colors cursor-pointer' : 'hover:bg-white/10 transition-colors cursor-pointer'} 
+                    className="hover:bg-white/10 transition-colors cursor-pointer" 
                     onClick={() => setSelectedTeam(team)}
                   >
                     <td className="py-4 px-4 font-semibold text-gray-200">{team.name}</td>
@@ -826,18 +953,22 @@ const SupervisorDashboard = () => {
             </div>
             
             <div className="flex space-x-3 items-center">
-              <select 
-                value={bulkAssignee}
-                onChange={(e) => setBulkAssignee(e.target.value)}
-                className="bg-black/40 border border-white/10 rounded-lg p-2 text-white text-sm focus:border-primary focus:outline-none"
-              >
-                <option value="" disabled>Select officer...</option>
-                {users.filter(u => u.status === 'Active' && !['Super Admin', 'Supervisor', 'Desk Officer'].includes(u.role)).map(u => (
-                  <option key={u.id} value={`${u.name} (${u.division})`}>
-                    {u.name} - {u.division}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <input 
+                  list="officers-list"
+                  value={bulkAssignee}
+                  onChange={(e) => setBulkAssignee(e.target.value)}
+                  placeholder="Search officer..."
+                  className="bg-black/40 border border-white/10 rounded-lg p-2 text-white text-sm focus:border-primary focus:outline-none w-64"
+                />
+                <datalist id="officers-list">
+                  {users.filter(u => u.status === 'Active' && !['Super Admin', 'Supervisor', 'Desk Officer'].includes(u.role)).map(u => (
+                    <option key={u.id} value={`${u.name} (${u.division})`}>
+                      {u.name} - {u.division}
+                    </option>
+                  ))}
+                </datalist>
+              </div>
               <button 
                 onClick={() => {
                   if (!bulkAssignee) return addToast('Please select an assignee first', 'warning');
@@ -1050,39 +1181,26 @@ const SupervisorDashboard = () => {
 
 const SuperAdminDashboard = () => {
   const { addToast } = useToastStore();
+  const { users } = useUserStore();
+  const { cases } = useCaseStore();
+  const { events } = useTimelineStore();
   const [cpuLoad, setCpuLoad] = useState(42);
   const [memory, setMemory] = useState(89);
   const [apiRate, setApiRate] = useState(1420);
-  const [activeSessions, setActiveSessions] = useState(842);
-  const [logs, setLogs] = useState([
-    { id: 1, time: 'Just now', event: 'Bulk Data Export', ip: '192.168.1.104', status: 'Flagged' },
-    { id: 2, time: '5 mins ago', event: 'New User Creation', ip: '10.0.0.52', status: 'Success' },
-    { id: 3, time: '12 mins ago', event: 'Failed Login (x5)', ip: '183.82.112.4', status: 'Blocked' }
-  ]);
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   const [isClearingCache, setIsClearingCache] = useState(false);
 
-  // Simulate real-time metric fluctuations
+  // Derived real-time metrics
+  const totalUsers = users.length;
+  const activeSessionsCount = users.filter(u => u.status === 'Active').length;
+  const systemAlertsCount = events.filter(e => e.type === 'alert' || e.type === 'warning').length;
+
+  // Simulate real-time metric fluctuations for server stats
   useEffect(() => {
     const interval = setInterval(() => {
       setCpuLoad(prev => Math.min(100, Math.max(0, prev + (Math.random() > 0.5 ? 2 : -2))));
       setMemory(prev => Math.min(100, Math.max(0, prev + (Math.random() > 0.5 ? 1 : -1))));
       setApiRate(prev => Math.max(500, prev + Math.floor(Math.random() * 50 - 25)));
-      setActiveSessions(prev => Math.max(100, prev + (Math.random() > 0.5 ? 1 : -1)));
-      
-      // Randomly inject a new audit log
-      if (Math.random() > 0.9) {
-        setLogs(prev => {
-          const newLog = {
-            id: Date.now(),
-            time: 'Just now',
-            event: ['API Query', 'Authentication', 'Case File Access', 'System Backup'][Math.floor(Math.random() * 4)],
-            ip: `192.168.1.${Math.floor(Math.random() * 255)}`,
-            status: ['Success', 'Success', 'Flagged', 'Blocked'][Math.floor(Math.random() * 4)]
-          };
-          return [newLog, ...prev.slice(0, 4)]; // keep last 5
-        });
-      }
     }, 2000);
     return () => clearInterval(interval);
   }, []);
@@ -1100,17 +1218,19 @@ const SuperAdminDashboard = () => {
     } else if (action === 'Database Backup') {
       addToast('Database backup compiling...', 'info');
       setTimeout(() => {
-        const dummyData = JSON.stringify({ timestamp: new Date().toISOString(), status: 'Backup Complete', users: 4892, logs: logs }, null, 2);
-        const blob = new Blob([dummyData], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `System_Backup_${Date.now()}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-        addToast('Database backup downloaded successfully.', 'success');
+        const doc = new jsPDF();
+        doc.setFontSize(22);
+        doc.text('Rakshak AI - System Backup Report', 20, 20);
+        doc.setFontSize(12);
+        doc.text(`Timestamp: ${new Date().toLocaleString()}`, 20, 30);
+        doc.text(`Total Users: ${users.length}`, 20, 40);
+        doc.text(`Total Cases: ${cases.length}`, 20, 50);
+        doc.text(`Total Audit Events: ${events.length}`, 20, 60);
+        
+        doc.text('This is an official system backup of the Rakshak AI platform.', 20, 80);
+        
+        doc.save(`System_Backup_${Date.now()}.pdf`);
+        addToast('Database backup downloaded successfully as PDF.', 'success');
       }, 1000);
     } else if (action === 'Maintenance Mode') {
       setIsMaintenanceMode(prev => {
@@ -1122,8 +1242,8 @@ const SuperAdminDashboard = () => {
   };
 
   const handleExportLogs = () => {
-    const csvRows = ['Timestamp,Event Type,IP Address,Status'];
-    logs.forEach(log => csvRows.push(`${log.time},${log.event},${log.ip},${log.status}`));
+    const csvRows = ['Timestamp,Event Type,Description,Status'];
+    events.slice().reverse().forEach(log => csvRows.push(`"${log.date} ${log.time}","${log.title}","${log.desc}",${log.type === 'alert' ? 'Flagged' : 'Success'}`));
     const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1153,10 +1273,10 @@ const SuperAdminDashboard = () => {
     </AnimatePresence>
 
     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-      <KPICard title="Total System Users" value={4892} icon={Users} color="primary" />
-      <KPICard title="Active Sessions" value={activeSessions} icon={Activity} color="success" />
+      <KPICard title="Total System Users" value={totalUsers} icon={Users} color="primary" />
+      <KPICard title="Active Sessions" value={activeSessionsCount} icon={Activity} color="success" />
       <KPICard title="API Request Rate" value={`${apiRate}/s`} icon={Database} color="info" />
-      <KPICard title="System Alerts" value={logs.filter(l => l.status === 'Flagged' || l.status === 'Blocked').length} icon={AlertTriangle} color="danger" />
+      <KPICard title="System Alerts" value={systemAlertsCount} icon={AlertTriangle} color="danger" />
     </div>
 
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1213,7 +1333,8 @@ const SuperAdminDashboard = () => {
       <div className="glass p-6 rounded-xl flex flex-col">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-200">Recent Security Audits</h3>
-          <button onClick={handleExportLogs} className="bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-lg text-xs text-gray-300 transition-colors flex items-center">
+          <button onClick={handleExportLogs} className="bg-primary hover:bg-primary/80 text-white shadow-lg shadow-primary/25 px-4 py-2 rounded-lg text-xs font-semibold transition-all flex items-center">
+            <Download className="w-4 h-4 mr-1.5" />
             Export Logs
           </button>
         </div>
@@ -1223,35 +1344,28 @@ const SuperAdminDashboard = () => {
               <tr className="border-b border-white/10 text-gray-400">
                 <th className="pb-2 font-medium">Timestamp</th>
                 <th className="pb-2 font-medium">Event Type</th>
-                <th className="pb-2 font-medium">IP Address</th>
+                <th className="pb-2 font-medium">Description</th>
                 <th className="pb-2 font-medium">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              <AnimatePresence>
-                {logs.map(log => (
-                  <motion.tr 
-                    key={log.id}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="group"
-                  >
-                    <td className="py-3 text-gray-300 whitespace-nowrap">{log.time}</td>
-                    <td className="py-3 text-gray-200">{log.event}</td>
-                    <td className="py-3 text-gray-400 font-mono text-xs">{log.ip}</td>
-                    <td className="py-3">
-                      <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${
-                        log.status === 'Success' ? 'text-success bg-success/10' :
-                        log.status === 'Flagged' ? 'text-warning bg-warning/10' :
-                        'text-danger bg-danger/10'
-                      }`}>
-                        {log.status}
-                      </span>
-                    </td>
-                  </motion.tr>
-                ))}
-              </AnimatePresence>
+              {events.filter(e => e && e.title && e.desc).slice().reverse().slice(0, 5).map((log, idx) => (
+                <tr key={`${log.date}-${log.time}-${idx}`} className="hover:bg-white/5 transition-colors">
+                  <td className="py-3 text-gray-300 whitespace-nowrap">{log.date} {log.time}</td>
+                  <td className="py-3 text-gray-200">{log.title}</td>
+                  <td className="py-3 text-gray-400 text-xs truncate max-w-[150px]" title={log.desc}>{log.desc}</td>
+                  <td className="py-3">
+                    <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded ${
+                      log.type === 'action' ? 'text-success bg-success/10' :
+                      log.type === 'warning' ? 'text-warning bg-warning/10' :
+                      log.type === 'alert' ? 'text-danger bg-danger/10' :
+                      'text-primary bg-primary/10'
+                    }`}>
+                      {log.type === 'alert' ? 'Flagged' : log.type === 'warning' ? 'Warning' : 'Success'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

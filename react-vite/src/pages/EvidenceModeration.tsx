@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ShieldAlert, UploadCloud, Search, Filter, CheckCircle, AlertTriangle, EyeOff, Eye, Image as ImageIcon, Download, Activity, Shield, XCircle } from 'lucide-react';
+import { ShieldAlert, UploadCloud, Search, Filter, CheckCircle, EyeOff, Eye, Image as ImageIcon, Download, Shield, XCircle, Activity } from 'lucide-react';
 import { useToastStore } from '../store/toastStore';
 import { useTimelineStore } from '../store/timelineStore';
-import { useCaseStore, useAssignedCases } from '../store/caseStore';
+import { useAssignedCases } from '../store/caseStore';
 
 const EvidenceModeration = () => {
   const [activeTab, setActiveTab] = useState<'queue' | 'dashboard'>('queue');
@@ -122,7 +122,7 @@ const EvidenceModeration = () => {
       caseId: targetCaseId,
       title: 'Evidence Override & Indexed',
       desc: `Quarantined evidence ${id} was manually approved by human reviewer and securely indexed.`,
-      type: 'evidence',
+      type: 'success',
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       iconName: 'CheckCircle',
@@ -142,7 +142,7 @@ const EvidenceModeration = () => {
       caseId: targetCaseId,
       title: 'Evidence Uploaded & Indexed',
       desc: `Safe evidence was uploaded and securely indexed.`,
-      type: 'evidence',
+      type: 'success',
       date: new Date().toLocaleDateString(),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       iconName: 'Shield',
@@ -184,9 +184,7 @@ const EvidenceModeration = () => {
   const drugCount = getFlagCount('drug');
   
   // Distribute remaining flags into "Other Categories"
-  const categorizedCount = violenceCount + nudityCount + drugCount;
-  const otherCount = allFlags.length - categorizedCount;
-  
+
   const totalFlags = allFlags.length || 1; // prevent divide by zero
   const violencePercent = allFlags.length === 0 ? 0 : Math.round((violenceCount / totalFlags) * 100);
   const nudityPercent = allFlags.length === 0 ? 0 : Math.round((nudityCount / totalFlags) * 100);
@@ -203,7 +201,7 @@ const EvidenceModeration = () => {
           <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Zoho Zia Image Moderation Engine - Quarantining unsafe graphical content</p>
         </div>
         <div className="flex space-x-2">
-          <button onClick={handleExport} className="bg-gray-100 hover:bg-gray-200 dark:bg-white/5 dark:hover:bg-white/10 text-gray-700 dark:text-gray-300 px-3 py-1.5 rounded-lg text-sm flex items-center transition-colors">
+          <button onClick={handleExport} className="bg-primary hover:bg-primary/80 text-white shadow-lg shadow-primary/25 px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center">
             <Download className="w-4 h-4 mr-2" /> Export Audit Log
           </button>
         </div>
@@ -410,7 +408,7 @@ const EvidenceModeration = () => {
                         </div>
                         
                         <div className="flex flex-wrap gap-1 mb-3">
-                          {item.flags.map((flag, idx) => (
+                          {(item.flags as string[]).map((flag: string, idx: number) => (
                             <span key={idx} className="bg-white/5 text-gray-300 px-2 py-0.5 rounded text-[10px] border border-white/10">{flag} ({item.confidence})</span>
                           ))}
                         </div>

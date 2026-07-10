@@ -1,42 +1,20 @@
 import { useState } from 'react';
-import { ShieldAlert, AlertTriangle, Bell, Clock, Activity, CheckCircle, Info, Filter, CheckCheck } from 'lucide-react';
+import { ShieldAlert, AlertTriangle, Bell, CheckCircle, Info, CheckCheck } from 'lucide-react';
 import { useToastStore } from '../store/toastStore';
 import { useTimelineStore } from '../store/timelineStore';
 import Modal from '../components/Modal';
 import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
 
 const Alerts = () => {
-  const { events } = useTimelineStore();
+  const { events, removeEvents } = useTimelineStore();
   const { addToast } = useToastStore();
   
-  const [dismissedIds, setDismissedIds] = useState<number[]>([]);
   const [selectedAlert, setSelectedAlert] = useState<any>(null);
   const [filter, setFilter] = useState('all'); // all, danger, warning, info/success
-  const [isSending, setIsSending] = useState(false);
-
-  const handleDispatchEmail = async () => {
-    const targetEmail = window.prompt("Enter the email address to dispatch the alert to:", "officers@rakshak-ai.com");
-    if (!targetEmail) return; // User cancelled or entered empty string
-
-    setIsSending(true);
-    try {
-      const response = await axios.post('/server/rakshak_function/api/mail/send', {
-        to: targetEmail,
-        subject: 'EMERGENCY: Officer Required',
-        content: 'Please respond to the location immediately.'
-      });
-      addToast(response.data.message, 'success');
-    } catch (error) {
-      console.error(error);
-      addToast('Failed to dispatch alert.', 'error');
-    }
-    setIsSending(false);
-  };
 
   // Dynamically map timeline events to alerts (newest first)
   const alerts = events
-    .filter(e => !dismissedIds.includes(e.id as number))
+    .filter(e => e && e.title && e.desc)
     .map(e => ({
       id: e.id as number,
       type: e.type === 'alert' ? 'danger' : e.type === 'action' ? 'warning' : 'info',
@@ -48,13 +26,15 @@ const Alerts = () => {
     .reverse();
 
   const handleDismiss = (id: number) => {
-    setDismissedIds(prev => [...prev, id]);
-    addToast('Alert dismissed', 'info');
+    removeEvents([id]);
+    addToast('Alert dismissed permanently', 'info');
   };
 
   const handleClearAll = () => {
-    setDismissedIds(events.map(e => e.id as number));
-    addToast('All alerts cleared', 'success');
+    const alertIds = alerts.map(a => a.id);
+    removeEvents(alertIds);
+    console.clear();
+    addToast('All visible alerts cleared permanently', 'success');
   };
 
   const filteredAlerts = alerts.filter(a => {
@@ -82,38 +62,32 @@ const Alerts = () => {
         <div className="flex items-center space-x-2">
           <div className="flex bg-black/40 border border-white/10 rounded-lg p-1">
             <button 
-              onClick={() => setFilter('all')}
+              onClick={() => { setFilter('all'); console.clear(); }}
               className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${filter === 'all' ? 'bg-white/10 text-white' : 'text-gray-400 hover:text-white'}`}
             >
               All
             </button>
             <button 
-              onClick={() => setFilter('danger')}
+              onClick={() => { setFilter('danger'); console.clear(); }}
               className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center ${filter === 'danger' ? 'bg-danger/20 text-danger' : 'text-gray-400 hover:text-danger'}`}
             >
               Critical
             </button>
             <button 
-              onClick={() => setFilter('warning')}
+              onClick={() => { setFilter('warning'); console.clear(); }}
               className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center ${filter === 'warning' ? 'bg-warning/20 text-warning' : 'text-gray-400 hover:text-warning'}`}
             >
               Warnings
             </button>
             <button 
-              onClick={() => setFilter('info')}
+              onClick={() => { setFilter('info'); console.clear(); }}
               className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors flex items-center ${filter === 'info' ? 'bg-primary/20 text-primary' : 'text-gray-400 hover:text-primary'}`}
             >
               Info
             </button>
           </div>
           
-          <button 
-            onClick={handleDispatchEmail}
-            disabled={isSending}
-            className="flex items-center px-3 py-2 bg-primary/20 hover:bg-primary/30 border border-primary/50 text-primary rounded-lg text-sm transition-colors mr-2"
-          >
-            {isSending ? 'Sending...' : 'Dispatch Email (Catalyst)'}
-          </button>
+
 
           <button 
             onClick={handleClearAll}
@@ -164,10 +138,10 @@ const Alerts = () => {
                   </div>
                   <p className="text-sm text-gray-300 mb-3">{alert.message}</p>
                   <div className="flex space-x-3">
-                    <button onClick={() => setSelectedAlert(alert)} className="text-xs bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-md text-gray-300 font-semibold transition-colors">
+                    <button onClick={() => setSelectedAlert(alert)} className="text-xs bg-primary/20 hover:bg-primary/30 border border-primary/30 px-3 py-1.5 rounded-md text-primary font-semibold transition-colors shadow-sm">
                       View Context
                     </button>
-                    <button onClick={() => handleDismiss(alert.id)} className="text-xs bg-white/5 hover:bg-white/10 px-3 py-1.5 rounded-md text-gray-300 transition-colors">
+                    <button onClick={() => handleDismiss(alert.id)} className="text-xs bg-gray-500/20 hover:bg-gray-500/30 border border-gray-500/30 px-3 py-1.5 rounded-md text-gray-300 font-medium transition-colors shadow-sm">
                       Dismiss
                     </button>
                   </div>

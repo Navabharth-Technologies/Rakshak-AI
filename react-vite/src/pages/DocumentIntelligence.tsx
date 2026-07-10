@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FileText, UploadCloud, Search, Filter, CheckCircle, Activity, AlertTriangle, FileDigit, Database, Download, FileSearch } from 'lucide-react';
+import { FileText, UploadCloud, Search, Filter, AlertTriangle, FileDigit, Database, Download, FileSearch } from 'lucide-react';
 import Tesseract from 'tesseract.js';
 import { useToastStore } from '../store/toastStore';
 import { useNavigate } from 'react-router-dom';
 import { useTimelineStore } from '../store/timelineStore';
 import { useDocumentStore } from '../store/documentStore';
-import { useCaseStore, useAssignedCases } from '../store/caseStore';
+import { useAssignedCases } from '../store/caseStore';
 import { useAuthStore } from '../store/authStore';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -18,20 +18,22 @@ const DocumentIntelligence = () => {
   const { documents, addDocument } = useDocumentStore();
   const { user, role } = useAuthStore();
   const cases = useAssignedCases();
-  const [targetCaseId, setTargetCaseId] = useState('104430006202600001');
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const activeCases = cases.filter((c: any) => c.status !== 'Completed');
+  const [targetCaseId, setTargetCaseId] = useState('');
 
   useEffect(() => {
-    if (cases.length > 0 && !cases.find(c => c.id === targetCaseId)) {
-      setTargetCaseId(cases[0].id);
+    if (activeCases.length > 0 && !targetCaseId) {
+      setTargetCaseId(activeCases[0].id);
     }
-  }, [cases, targetCaseId]);
+  }, [activeCases, targetCaseId]);
   const [activeTab, setActiveTab] = useState<'upload' | 'dashboard' | 'repository'>('dashboard');
   const [file, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [extractedText, setExtractedText] = useState<string>('');
   const [processingState, setProcessingState] = useState<'idle' | 'analyzing' | 'complete'>('idle');
   const [isSavingStore, setIsSavingStore] = useState(false);
+  const isGeneratingPDFRef = { current: false };
+  const setIsGeneratingPDF = (v: boolean) => { isGeneratingPDFRef.current = v; };
   const { addToast } = useToastStore();
 
   const handleSaveToFileStore = async () => {
@@ -44,7 +46,17 @@ const DocumentIntelligence = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       addToast(response.data.message, 'success');
-      addEvent('filestore_upload', 'Document Archived securely', `Evidence saved in Catalyst File Store.`, 'evidence');
+      addEvent({
+        caseId: 'SYSTEM',
+        date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+        time: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+        title: 'Document Archived securely',
+        type: 'document',
+        desc: 'Evidence saved in Catalyst File Store.',
+        iconName: 'FileText',
+        color: 'text-primary',
+        bg: 'bg-primary/20'
+      });
     } catch (error) {
       console.error(error);
       addToast('Failed to save document to File Store', 'error');
@@ -68,7 +80,7 @@ const DocumentIntelligence = () => {
       try {
         // Convert unsupported images (like WEBP) to JPEG before sending, because Zia only accepts JPG/PNG/TIFF/PDF natively
         if (selectedFile.type.startsWith('image/') && !selectedFile.type.match('image/jpeg') && !selectedFile.type.match('image/png') && !selectedFile.type.match('image/tiff')) {
-          selectedFile = await new Promise<File>((resolve, reject) => {
+          selectedFile = await new Promise<File>((resolve) => {
             const img = new Image();
             img.onload = () => {
               const canvas = document.createElement('canvas');
@@ -141,7 +153,7 @@ const DocumentIntelligence = () => {
         if (!foundPlates || foundPlates.length === 0) {
           try {
             setProcessingState('analyzing');
-            const tesseractResult = await Tesseract.recognize(file, 'eng');
+            const tesseractResult = await Tesseract.recognize(selectedFile, 'eng');
             rawText += "\n\n[Tesseract Fallback OCR Data]:\n" + tesseractResult.data.text;
             plainTextExtracted += tesseractResult.data.text;
             foundPlates = extractPlates(rawText);
@@ -373,8 +385,6 @@ const DocumentIntelligence = () => {
     } catch(err) {
       console.error(err);
       addToast('Failed to generate report', 'error');
-    } finally {
-      setIsGeneratingPDF(false);
     }
   };
 
@@ -396,7 +406,7 @@ const DocumentIntelligence = () => {
           <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">Printed & Handwritten OCR, semantic indexing, and knowledge extraction</p>
         </div>
         <div className="flex space-x-2">
-          <button onClick={handleExport} className="bg-white/5 hover:bg-white/10 text-gray-300 px-3 py-1.5 rounded-lg text-sm flex items-center transition-colors">
+          <button onClick={handleExport} className="bg-primary hover:bg-primary/80 text-white shadow-lg shadow-primary/25 px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center">
             <Download className="w-4 h-4 mr-2" /> Export
           </button>
         </div>
@@ -491,9 +501,9 @@ const DocumentIntelligence = () => {
                         <select
                           value={targetCaseId}
                           onChange={(e) => setTargetCaseId(e.target.value)}
-                          className="bg-black/50 border border-white/10 rounded px-2 py-1 text-xs text-white focus:outline-none focus:border-primary"
+                          className="bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded px-2 py-1 text-xs text-gray-800 dark:text-white focus:outline-none focus:border-primary"
                         >
-                          {cases.filter((c: any) => c.status !== 'Completed').map((c: any) => (
+                          {activeCases.map((c: any) => (
                             <option key={c.id} value={c.id}>
                               {c.id} — {c.type} ({c.status})
                             </option>
@@ -501,7 +511,7 @@ const DocumentIntelligence = () => {
                         </select>
                         <button
                           onClick={handleZiaTranslate}
-                          className="text-xs bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 px-3 py-1 rounded transition-colors flex items-center"
+                          className="text-xs bg-purple-100 dark:bg-purple-500/20 hover:bg-purple-200 dark:hover:bg-purple-500/30 text-purple-700 dark:text-purple-300 px-3 py-1 rounded transition-colors flex items-center"
                         >
                           Zia Translate (ES)
                         </button>
@@ -512,33 +522,34 @@ const DocumentIntelligence = () => {
                             setExtractedText('');
                             setProcessingState('idle');
                           }}
-                          className="text-xs bg-gray-500/20 hover:bg-gray-500/30 text-gray-300 px-3 py-1 rounded transition-colors"
+                          className="text-xs bg-gray-200 dark:bg-gray-500/20 hover:bg-gray-300 dark:hover:bg-gray-500/30 text-gray-700 dark:text-gray-300 px-3 py-1 rounded transition-colors"
                         >
                           Upload Another
                         </button>
                         <button
                           onClick={handleSaveToFileStore}
                           disabled={isSavingStore}
-                          className="text-xs bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 px-3 py-1 rounded transition-colors flex items-center"
+                          className="text-xs bg-blue-100 dark:bg-blue-500/20 hover:bg-blue-200 dark:hover:bg-blue-500/30 text-blue-700 dark:text-blue-300 px-3 py-1 rounded transition-colors flex items-center"
                         >
                           <UploadCloud className="w-3 h-3 mr-1" /> {isSavingStore ? 'Saving...' : 'Save to File Store'}
                         </button>
                         <button
                           onClick={() => {
                             addEvent({
-                              id: Date.now(),
                               caseId: targetCaseId,
                               title: 'Document Intelligence Logged',
-                              description: `Indexed document via Zia OCR. Document: ${file?.name || 'Unknown'}.`,
-                              type: 'evidence',
+                              desc: `Indexed document via Zia OCR. Document: ${file?.name || 'Unknown'}.`,
+                              type: 'document',
                               time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                               date: new Date().toLocaleDateString(),
-                              icon: 'file'
+                              iconName: 'FileText',
+                              bg: 'bg-indigo-400/20',
+                              color: 'text-indigo-400'
                             });
                             addToast('Document Indexed to Case successfully!', 'success');
                             navigate(`/timeline?caseId=${targetCaseId}`);
                           }}
-                          className="text-xs bg-primary/20 hover:bg-primary/30 text-primary px-3 py-1 rounded transition-colors flex items-center"
+                          className="text-xs bg-primary/10 dark:bg-primary/20 hover:bg-primary/20 dark:hover:bg-primary/30 text-primary px-3 py-1 rounded transition-colors flex items-center"
                         >
                           <Database className="w-3 h-3 mr-1" /> Approve & Index
                         </button>
@@ -608,17 +619,17 @@ const DocumentIntelligence = () => {
               exit={{ opacity: 0, y: -10 }}
               className="space-y-6"
             >
-              <div className="flex justify-between items-center bg-black/30 p-4 rounded-xl border border-white/5">
+              <div className="flex justify-between items-center bg-gray-100 dark:bg-black/30 p-4 rounded-xl border border-gray-200 dark:border-white/5">
                 <div className="flex space-x-4">
                   <div className="relative">
                     <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-500" />
-                    <input type="text" placeholder="Semantic Search (e.g. 'Red Honda Civic')..." className="bg-black/50 border border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm text-white focus:outline-none focus:border-primary w-80" />
+                    <input type="text" placeholder="Semantic Search (e.g. 'Red Honda Civic')..." className="bg-white dark:bg-black/50 border border-gray-300 dark:border-white/10 rounded-lg pl-10 pr-4 py-2 text-sm text-gray-800 dark:text-white focus:outline-none focus:border-primary w-80" />
                   </div>
-                  <button className="bg-white/5 hover:bg-white/10 px-4 py-2 rounded-lg text-sm text-gray-300 flex items-center transition-colors">
+                  <button className="bg-gray-200 dark:bg-white/5 hover:bg-gray-300 dark:hover:bg-white/10 px-4 py-2 rounded-lg text-sm text-gray-700 dark:text-gray-300 flex items-center transition-colors">
                     <Filter className="w-4 h-4 mr-2" /> Filters
                   </button>
                 </div>
-                <button className="text-sm bg-warning/20 text-warning px-3 py-1.5 rounded-lg flex items-center hover:bg-warning/30 transition-colors">
+                <button className="text-sm bg-warning/10 dark:bg-warning/20 text-warning px-3 py-1.5 rounded-lg flex items-center hover:bg-warning/20 dark:hover:bg-warning/30 transition-colors">
                   <AlertTriangle className="w-4 h-4 mr-2" /> 2 Similar Documents Found
                 </button>
               </div>
@@ -636,7 +647,7 @@ const DocumentIntelligence = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {documents.map((doc, idx) => (
+                    {documents.map((doc) => (
                       <tr key={doc.id} className="border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer">
                         <td className="py-4 px-4">
                           <p className="font-bold text-gray-200">{doc.title}</p>
@@ -659,7 +670,7 @@ const DocumentIntelligence = () => {
                         </td>
                         <td className="py-4 px-4 text-gray-400 text-sm">{doc.date}</td>
                         <td className="py-4 px-4 text-right">
-                          <button className="text-primary hover:text-blue-400 text-sm font-semibold">View</button>
+                          <button onClick={() => setActiveTab('upload')} className="text-primary hover:text-blue-400 text-sm font-semibold">View</button>
                         </td>
                       </tr>
                     ))}

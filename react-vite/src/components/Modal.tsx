@@ -6,9 +6,10 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
+  maxWidth?: string;
 }
 
-const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
+const Modal = ({ isOpen, onClose, title, children, maxWidth = "max-w-lg" }: ModalProps) => {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -26,7 +27,7 @@ const Modal = ({ isOpen, onClose, title, children }: ModalProps) => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              className="bg-white dark:glass w-full max-w-lg rounded-2xl overflow-hidden border border-gray-200 dark:border-white/10 shadow-2xl pointer-events-auto max-h-[90vh] flex flex-col"
+              className={`bg-white dark:glass w-full ${maxWidth} rounded-2xl overflow-hidden border border-gray-200 dark:border-white/10 shadow-2xl pointer-events-auto max-h-[90vh] flex flex-col`}
             >
               <div className="flex justify-between items-center p-6 border-b border-gray-200 dark:border-white/10 bg-gray-50 dark:bg-black/40">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">{title}</h2>

@@ -1,37 +1,38 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ScanFace, UploadCloud, ChevronLeft, ChevronRight, User, Smile, Calendar, CheckCircle, Code, Database } from 'lucide-react';
+import { ScanFace, UploadCloud, ChevronLeft, ChevronRight, User, Smile, Calendar, CheckCircle, Database } from 'lucide-react';
 import { useToastStore } from '../store/toastStore';
 import { useNavigate } from 'react-router-dom';
 import { useTimelineStore } from '../store/timelineStore';
-import { useCaseStore, useAssignedCases } from '../store/caseStore';
+import { useAssignedCases } from '../store/caseStore';
 
-type SDKTab = 'Java SDK' | 'NodeJS SDK' | 'Python SDK';
 
 const FaceIntelligence = () => {
-  const [activeTab, setActiveTab] = useState<'upload' | 'dashboard'>('upload');
-  const [file, setFile] = useState<File | null>(null);
+  const [activeTab, setActiveTab] = useState<'upload' | 'dashboard' | 'repository'>('dashboard');
+  const [, setFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [processingState, setProcessingState] = useState<'idle' | 'analyzing' | 'complete'>('idle');
   const [facesList, setFacesList] = useState<any[]>([]);
   const [selectedFaceIndex, setSelectedFaceIndex] = useState(0);
-  const [targetCaseId, setTargetCaseId] = useState('104430006202600001');
+
   
   const [imageDims, setImageDims] = useState({ width: 0, height: 0, displayWidth: 0, displayHeight: 0 });
   const imageContainerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
-  const [activeSdkTab, setActiveSdkTab] = useState<SDKTab>('NodeJS SDK');
+
   const { addToast } = useToastStore();
   const navigate = useNavigate();
   const { addEvent } = useTimelineStore();
   const cases = useAssignedCases();
+  const activeCases = cases.filter((c: any) => c.status !== 'Completed');
+  const [targetCaseId, setTargetCaseId] = useState('');
 
   useEffect(() => {
-    if (cases.length > 0 && !cases.find(c => c.id === targetCaseId)) {
-      setTargetCaseId(cases[0].id);
+    if (activeCases.length > 0 && !targetCaseId) {
+      setTargetCaseId(activeCases[0].id);
     }
-  }, [cases, targetCaseId]);
+  }, [activeCases, targetCaseId]);
 
   const handleIndexToCase = () => {
     if (!facesList.length) return;
@@ -41,7 +42,7 @@ const FaceIntelligence = () => {
       date: new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }),
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       title: 'Facial Intelligence Logged',
-      type: 'evidence',
+      type: 'image',
       desc: `Facial vector extracted from uploaded evidence. Matched metrics: ${selectedFace.gender?.prediction || selectedFace.gender}, ${selectedFace.age?.prediction || selectedFace.age} years old. Confidence score recorded.`,
       iconName: 'ScanFace',
       color: 'text-primary',
@@ -87,7 +88,7 @@ const FaceIntelligence = () => {
       try {
         // Convert to JPEG before sending, because Zia only accepts JPG/PNG natively
         if (!selectedFile.type.match('image/jpeg') && !selectedFile.type.match('image/png')) {
-          selectedFile = await new Promise<File>((resolve, reject) => {
+          selectedFile = await new Promise<File>((resolve) => {
             const img = new Image();
             img.onload = () => {
               const canvas = document.createElement('canvas');
@@ -160,7 +161,7 @@ const FaceIntelligence = () => {
       let percent = typeof confVal === 'number' ? Math.round(confVal * 100) : 
                     typeof confVal === 'string' ? Math.round(parseFloat(confVal) * 100) : 
                     typeof confVal === 'object' && confVal !== null ? (
-                         Object.values(confVal).reduce((a: any, b: any) => Math.max(a, parseFloat(b)), 0) * 100
+                         Object.values(confVal as Record<string, any>).reduce((a: any, b: any) => Math.max(a, parseFloat(b)), 0) * 100
                     ) : 99;
       
       if (isNaN(percent)) percent = 99;
@@ -388,11 +389,11 @@ const FaceIntelligence = () => {
                                   onChange={(e) => setTargetCaseId(e.target.value)}
                                   className="w-full bg-black/40 border border-white/10 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-primary"
                                 >
-                                  {cases.filter((c: any) => c.status !== 'Completed').map((c: any) => (
+                                  {activeCases.map((c: any) => (
                                     <option key={c.id} value={c.id}>
-                                      {c.id} — {c.type} ({c.status})</option>
-                                  ))}
-                                </select>
+                                      {c.id} — {c.type} ({c.status})
+                                    </option>
+                                  ))}</select>
                                 <button 
                                   onClick={handleIndexToCase}
                                   className="w-full bg-primary hover:bg-blue-600 text-white font-bold py-2.5 rounded-lg transition-colors flex justify-center items-center text-sm shadow-lg shadow-primary/20"

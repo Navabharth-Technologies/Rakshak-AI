@@ -19,33 +19,72 @@ const Login = () => {
 
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Only allow alphabets
+    let val = e.target.value.replace(/[^a-zA-Z]/g, '');
+    // Prevent 3 continuous identical characters
+    if (/(.)\1\1/i.test(val)) {
+      return; 
+    }
+    setUsername(val);
+  };
+
+  const handlePasswordChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let val = e.target.value;
+    // Prevent 3 continuous identical characters
+    if (/(.)\1\1/i.test(val)) {
+      return; 
+    }
+    setPassword(val);
+  };
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (/\s/.test(password)) {
+      addToast('Password cannot contain whitespace characters.', 'error');
+      return;
+    }
+
+    if (!/^[a-zA-Z]+$/.test(username)) {
+      addToast('Username should only contain alphabets (no spaces, numbers, or special characters).', 'error');
+      return;
+    }
+    if (/(.)\1\1/i.test(username)) {
+      addToast('Username cannot contain 3 continuous identical letters.', 'error');
+      return;
+    }
+    if (/(.)\1\1/i.test(password)) {
+      addToast('Password cannot contain 3 continuous identical characters.', 'error');
+      return;
+    }
+
     setIsAuthenticating(true);
-    addToast('Authenticating via Catalyst UserManagement...', 'info');
-    
+    addToast('Authenticating...', 'info');
+
+    // Simulate a short auth delay
+    await new Promise(resolve => setTimeout(resolve, 600));
+
     try {
-      const response = await fetch('/server/rakshak_function/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: username, password })
-      });
-      
-      const data = await response.json();
-      
-      if (data.success && data.user) {
-        if (data.user.status !== 'Active') {
-          addToast('This account has been suspended.', 'error');
+      // Validate directly against userStore (admin-provisioned users in localStorage)
+      const matchedUser = users.find(
+        u => u.username === username && u.password === password
+      );
+
+      if (matchedUser) {
+        if (matchedUser.status !== 'Active') {
+          addToast('This account has been suspended. Contact your administrator.', 'error');
+          setIsAuthenticating(false);
           return;
         }
-        login(data.user);
-        addToast(`Catalyst Auth Success: Welcome back, ${data.user.name}`, 'success');
+        login(matchedUser);
+        addToast(`Welcome back, ${matchedUser.name}!`, 'success');
         navigate('/dashboard');
       } else {
-        addToast(data.error || 'Invalid username or password.', 'error');
+        addToast('Invalid username or password.', 'error');
       }
     } catch (error) {
-      addToast('Catalyst Authentication service is unreachable.', 'error');
+      addToast('Authentication failed. Please try again.', 'error');
     } finally {
       setIsAuthenticating(false);
     }
@@ -84,7 +123,7 @@ const Login = () => {
               placeholder="Username"
               className="w-full bg-white dark:bg-black/30 border border-gray-300 dark:border-gray-600 rounded-lg py-3 pl-10 pr-4 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-gray-900 dark:text-white"
               value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              onChange={handleUsernameChange}
               required
             />
           </div>
@@ -96,7 +135,7 @@ const Login = () => {
               placeholder="Password"
               className="w-full bg-white dark:bg-black/30 border border-gray-300 dark:border-gray-600 rounded-lg py-3 pl-10 pr-12 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors text-gray-900 dark:text-white"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={handlePasswordChange}
               required
             />
             <button

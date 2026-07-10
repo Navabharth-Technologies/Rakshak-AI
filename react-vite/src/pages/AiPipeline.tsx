@@ -1,11 +1,10 @@
-import { useState } from 'react';
-import { UploadCloud, FileText, Image as ImageIcon, Camera, Activity, CheckCircle, Search, Cpu, Database, ScanLine, Tag } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from 'react';
+import { UploadCloud, FileText, Image as ImageIcon, CheckCircle, Cpu, Database } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useToastStore } from '../store/toastStore';
 import { useTimelineStore } from '../store/timelineStore';
-import { useCaseStore, useAssignedCases } from '../store/caseStore';
-import { useAuthStore } from '../store/authStore';
+import { useAssignedCases } from '../store/caseStore';
 
 
 const AiPipeline = () => {
@@ -17,6 +16,13 @@ const AiPipeline = () => {
   const { addToast } = useToastStore();
   const { addEvent } = useTimelineStore();
   const assignedCases = useAssignedCases();
+  const activeCases = assignedCases.filter((c: any) => c.status !== 'Completed');
+
+  useEffect(() => {
+    if (activeCases.length > 0 && !targetCaseId) {
+      setTargetCaseId(activeCases[0].id);
+    }
+  }, [activeCases, targetCaseId]);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -78,14 +84,14 @@ const AiPipeline = () => {
                 className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-sm text-white focus:outline-none focus:border-primary"
               >
                 <option value="" disabled>Select a case...</option>
-                {assignedCases.filter(c => c.status !== 'Completed').map(c => (
+                {activeCases.map((c: any) => (
                   <option key={c.id} value={c.id}>
                     {c.id} — {c.type} ({c.status})
                   </option>
                 ))}
               </select>
-              {assignedCases.length === 0 && (
-                <p className="text-xs text-gray-500 mt-1 italic">No cases assigned yet.</p>
+              {activeCases.length === 0 && (
+                <p className="text-xs text-gray-500 mt-1 italic">No active cases assigned yet.</p>
               )}
             </div>
 

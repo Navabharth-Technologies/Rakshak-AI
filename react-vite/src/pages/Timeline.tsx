@@ -1,4 +1,4 @@
-import { Clock, CheckCircle, AlertCircle, FileText, Camera, Video, Navigation, Shield, User, Database, Search } from 'lucide-react';
+import { Clock, CheckCircle, AlertCircle, FileText, Camera, Video, Shield, User, Database, Search } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useTimelineStore } from '../store/timelineStore';
 import { useCaseStore } from '../store/caseStore';
