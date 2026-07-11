@@ -4,8 +4,22 @@ const multer = require('multer');
 const fs = require('fs');
 const os = require('os');
 
+const path = require('path');
+
 const app = express();
+
+// Strip /server/rakshak_function prefix from incoming requests for backward compatibility with existing front-end URLs
+app.use((req, res, next) => {
+    if (req.url.startsWith('/server/rakshak_function')) {
+        req.url = req.url.replace('/server/rakshak_function', '');
+    }
+    next();
+});
+
 app.use(express.json());
+
+// Serve static React files
+app.use(express.static(path.join(__dirname, 'dist')));
 
 const storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -227,7 +241,7 @@ app.post('/api/assistant/chat', express.json(), async (req, res) => {
         } else {
             // 2. Otherwise try to fetch the live Digital Twin cases from Catalyst Cache
             try {
-                const cache = catalystApp.cache().segment();
+                const cache = catalystApp.cache().segment('DefaultSegment');
                 let casesData = await cache.get('ui_cases').catch(() => null);
                 
                 if (casesData) {
@@ -492,9 +506,10 @@ const CACHE_SEGMENT_ID = 'DefaultSegment';
 app.get('/api/ui/cases', async (req, res) => {
     try {
         const catalystApp = catalyst.initialize(req);
-        const cache = catalystApp.cache().segment();
+        const cache = catalystApp.cache().segment('DefaultSegment');
 
-        let casesData = await cache.get('ui_cases').catch(() => null);
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Cache timeout')), 3000));
+        let casesData = await Promise.race([cache.get('ui_cases'), timeoutPromise]).catch(() => null);
 
         if (casesData) {
             // Parse because Cache stores strings or JSON depending on SDK version
@@ -514,10 +529,11 @@ app.get('/api/ui/cases', async (req, res) => {
 app.put('/api/ui/cases', async (req, res) => {
     try {
         const catalystApp = catalyst.initialize(req);
-        const cache = catalystApp.cache().segment();
+        const cache = catalystApp.cache().segment('DefaultSegment');
 
         const cases = req.body;
-        await cache.put('ui_cases', JSON.stringify(cases)); // 1 hour expiry by default usually, but Catalyst cache can be persistent
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Cache timeout')), 3000));
+        await Promise.race([cache.put('ui_cases', JSON.stringify(cases)), timeoutPromise]).catch(e => console.log('Cache put timeout/error', e));
 
         res.json({ success: true });
     } catch (error) {
@@ -529,9 +545,10 @@ app.put('/api/ui/cases', async (req, res) => {
 app.get('/api/ui/users', async (req, res) => {
     try {
         const catalystApp = catalyst.initialize(req);
-        const cache = catalystApp.cache().segment();
+        const cache = catalystApp.cache().segment('DefaultSegment');
 
-        let usersData = await cache.get('ui_users').catch(() => null);
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Cache timeout')), 3000));
+        let usersData = await Promise.race([cache.get('ui_users'), timeoutPromise]).catch(() => null);
 
         if (usersData) {
             if (typeof usersData === 'string') {
@@ -567,10 +584,11 @@ app.get('/api/ui/users', async (req, res) => {
 app.put('/api/ui/users', async (req, res) => {
     try {
         const catalystApp = catalyst.initialize(req);
-        const cache = catalystApp.cache().segment();
+        const cache = catalystApp.cache().segment('DefaultSegment');
 
         const users = req.body;
-        await cache.put('ui_users', JSON.stringify(users));
+        const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Cache timeout')), 3000));
+        await Promise.race([cache.put('ui_users', JSON.stringify(users)), timeoutPromise]).catch(e => console.log('Cache put timeout/error', e));
 
         res.json({ success: true });
     } catch (error) {
@@ -725,7 +743,7 @@ app.post('/api/nosql/evidence', express.json(), async (req, res) => {
             result = await catalystApp.noSQL().segment('UnstructuredEvidence').insert(unstructuredData);
         } else {
             // Standard JSON Datastore fallback
-            result = await catalystApp.cache().segment().put(`nosql_evidence_${Date.now()}`, JSON.stringify(unstructuredData));
+            result = await catalystApp.cache().segment('DefaultSegment').put(`nosql_evidence_${Date.now()}`, JSON.stringify(unstructuredData));
         }
 
         res.json({ success: true, message: "Unstructured Data saved to Catalyst NoSQL", result });
@@ -936,9 +954,14 @@ app.post('/api/filestore/upload', upload.single('document'), async (req, res) =>
         
         res.json({ success: true, service: "Catalyst File Store", message: `Document archived securely in Catalyst File Store.` });
     } catch (error) {
-        res.status(500).json({ error: error.message });
+// Fallback all non-API/non-server requests to React SPA's index.html
+app.get('*', (req, res, next) => {
+    if (!req.url.startsWith('/api') && !req.url.startsWith('/server')) {
+        return res.sendFile(path.join(__dirname, 'dist', 'index.html'));
     }
+    next();
 });
+
 module.exports = app;
 
 // Catalyst AppSail (Managed Runtime) Entry Point

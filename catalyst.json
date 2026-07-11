@@ -1,6 +1,6 @@
 {
   "client": {
-    "source": "react-vite/dist"
+    "source": "client"
   },
   "functions": {
     "targets": [

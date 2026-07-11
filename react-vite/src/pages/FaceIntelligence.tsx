@@ -347,28 +347,28 @@ const FaceIntelligence = () => {
                                        <ScanFace className="w-5 h-5" />, 
                                        "Face Detected", 
                                        "", 
-                                       selectedFace.confidence || 1,
+                                       selectedFace.confidence || selectedFace.face_attributes?.confidence || 1,
                                        "bg-success", "text-success"
                                    )}
                                    {renderMetric(
                                        <User className="w-5 h-5" />, 
                                        "Gender Recognized", 
-                                       formatStr(selectedFace.gender?.prediction || selectedFace.gender), 
-                                       selectedFace.gender?.confidence,
+                                       formatStr(selectedFace.gender?.prediction || selectedFace.face_attributes?.gender?.prediction || selectedFace.gender || "Unknown"), 
+                                       selectedFace.gender?.confidence || selectedFace.face_attributes?.gender?.confidence,
                                        "bg-success", "text-success"
                                    )}
                                    {renderMetric(
                                        <Smile className="w-5 h-5" />, 
                                        "", // No prefix title, just the emotion
-                                       formatStr(selectedFace.emotion?.prediction || selectedFace.emotion), 
-                                       selectedFace.emotion?.confidence,
+                                       formatStr(selectedFace.emotion?.prediction || selectedFace.face_attributes?.emotion?.prediction || selectedFace.emotion || "Unknown"), 
+                                       selectedFace.emotion?.confidence || selectedFace.face_attributes?.emotion?.confidence,
                                        "bg-success", "text-success"
                                    )}
                                    {renderMetric(
                                        <Calendar className="w-5 h-5" />, 
                                        "Age Range", 
-                                       (selectedFace.age?.prediction || selectedFace.age) + " years old", 
-                                       selectedFace.age?.confidence,
+                                       (selectedFace.age?.prediction || selectedFace.face_attributes?.age?.prediction || selectedFace.age || "Unknown") + " years old", 
+                                       selectedFace.age?.confidence || selectedFace.face_attributes?.age?.confidence,
                                        "bg-warning", "text-warning"
                                    )}
                                </div>

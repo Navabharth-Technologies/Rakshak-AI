@@ -3,12 +3,23 @@
     "name": "Login Redirect",
     "source_endpoint": "/index.html",
     "target_endpoint": "/index.html",
-    "target": "client",
+    "target": "rakshak-client",
     "method": "GET",
     "throttling": {
       "overall": {},
       "ip": {}
     },
     "system": true
+  },
+  {
+    "name": "React Routing",
+    "source_endpoint": "/*",
+    "target_endpoint": "/index.html",
+    "target": "rakshak-client",
+    "method": "GET",
+    "throttling": {
+      "overall": {},
+      "ip": {}
+    }
   }
 ]

@@ -1,0 +1,12 @@
+{
+  "name": "rakshak-client",
+  "version": "1.0.0",
+  "description": "Catalyst client package",
+  "scripts": {
+    "build": "",
+    "test": ""
+  },
+  "author": "",
+  "license": "ISC",
+  "homepage": "index.html"
+}
