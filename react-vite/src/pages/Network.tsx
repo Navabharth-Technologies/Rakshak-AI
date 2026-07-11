@@ -75,27 +75,36 @@ const Network = () => {
         const offsetY = Math.floor(index / 3) * 400 + 100;
 
         const caseNodeId = `case-${activeCase.id}`;
-        const accusedId = `accused-${activeCase.id}`;
-        const victimId = `victim-${activeCase.id}`;
-        const compId = `comp-${activeCase.id}`;
-
-        const suspectLabel = activeCase?.suspectName && activeCase.suspectName !== 'Unknown' ? `Suspect\n${activeCase.suspectName}` : 'Suspect\nUnknown';
-        const victimLabel = activeCase?.victimName && activeCase.victimName !== 'Unknown' ? `Victim: ${activeCase.victimName}` : 'Victim: Unknown';
-        const compLabel = activeCase?.complainantName && activeCase.complainantName !== 'Unknown' ? `Complainant: ${activeCase.complainantName}` : 'Complainant: Unknown';
-
+        
         data.nodes.push(
-          { id: caseNodeId, position: { x: 400 + offsetX, y: 300 + offsetY }, data: { label: `FIR:\n${activeCase.id}`, type: 'case', details: null }, style: caseStyle },
-          { id: accusedId, position: { x: 200 + offsetX, y: 100 + offsetY }, data: { label: suspectLabel, type: 'accused', details: null }, style: accusedStyle },
-          { id: victimId, position: { x: 600 + offsetX, y: 150 + offsetY }, data: { label: victimLabel, type: 'victim', details: null }, style: victimStyle },
-          { id: compId, position: { x: 400 + offsetX, y: 100 + offsetY }, data: { label: compLabel, type: 'complainant', details: null }, style: compStyle }
+          { id: caseNodeId, position: { x: 400 + offsetX, y: 300 + offsetY }, data: { label: `FIR:\n${activeCase.id}`, type: 'case', details: null }, style: caseStyle }
         );
 
-        data.edges.push(
-          { id: `e-${caseNodeId}-${accusedId}`, source: caseNodeId, target: accusedId, label: 'Accused In', animated: true, style: { stroke: '#ef4444', strokeWidth: 2 } },
-          { id: `e-${caseNodeId}-${victimId}`, source: caseNodeId, target: victimId, label: 'Victim Of', style: { stroke: '#22c55e' } },
-          { id: `e-${compId}-${caseNodeId}`, source: compId, target: caseNodeId, label: 'Filed By', style: { stroke: '#eab308' } },
-          { id: `e-syn-${accusedId}`, source: 'syndicate-alpha', target: accusedId, label: 'Known Associate', animated: true, style: { stroke: '#8b5cf6', strokeWidth: 3 } }
-        );
+        const addNodes = (namesRaw: any, type: string, defaultLabel: string, style: any, baseY: number, edgeLabel: string, edgeStroke: string) => {
+           let names = namesRaw;
+           if (!names) names = ['Unknown'];
+           else if (!Array.isArray(names)) names = [names];
+           else if (names.length === 0) names = ['Unknown'];
+           
+           names.forEach((name: string, i: number) => {
+              const nodeId = `${type}-${activeCase.id}-${i}`;
+              const label = name !== 'Unknown' ? `${defaultLabel}: ${name}` : `${defaultLabel}: Unknown`;
+              data.nodes.push({ id: nodeId, position: { x: type === 'accused' ? 200 + offsetX : (type === 'victim' ? 600 + offsetX : 400 + offsetX), y: baseY + offsetY + (i * 70) }, data: { label: type === 'accused' ? `Suspect\n${name}` : label, type, details: null }, style });
+              
+              if (type === 'accused') {
+                 data.edges.push({ id: `e-${caseNodeId}-${nodeId}`, source: caseNodeId, target: nodeId, label: edgeLabel, animated: true, style: { stroke: edgeStroke, strokeWidth: 2 } });
+                 data.edges.push({ id: `e-syn-${nodeId}`, source: 'syndicate-alpha', target: nodeId, label: 'Known Associate', animated: true, style: { stroke: '#8b5cf6', strokeWidth: 3 } });
+              } else if (type === 'victim') {
+                 data.edges.push({ id: `e-${caseNodeId}-${nodeId}`, source: caseNodeId, target: nodeId, label: edgeLabel, style: { stroke: edgeStroke } });
+              } else {
+                 data.edges.push({ id: `e-${nodeId}-${caseNodeId}`, source: nodeId, target: caseNodeId, label: edgeLabel, style: { stroke: edgeStroke } });
+              }
+           });
+        };
+
+        addNodes(activeCase.suspectName, 'accused', 'Suspect', accusedStyle, 100, 'Accused In', '#ef4444');
+        addNodes(activeCase.victimName, 'victim', 'Victim', victimStyle, 150, 'Victim Of', '#22c55e');
+        addNodes(activeCase.complainantName, 'complainant', 'Complainant', compStyle, 100, 'Filed By', '#eab308');
       });
     } else {
       const activeCase = storeCases.find((c: any) => c.id === selectedCaseId);
@@ -110,28 +119,34 @@ const Network = () => {
         const compStyle = { backgroundColor: '#713f12', color: 'white', border: '2px solid #eab308', borderRadius: '8px', padding: '10px', fontSize: '12px' };
         
         const caseNodeId = `case-${selectedCaseId}`;
-        const accusedId = `accused-${selectedCaseId}`;
-        const victimId = `victim-${selectedCaseId}`;
-        const compId = `comp-${selectedCaseId}`;
+        
+        data = { nodes: [], edges: [] };
+        data.nodes.push({ id: caseNodeId, position: { x: 400, y: 300 }, data: { label: `FIR:\n${selectedCaseId}`, type: 'case', details: null }, style: caseStyle });
 
-        // Use activeCase already fetched above
-        const suspectLabel = activeCase?.suspectName && activeCase.suspectName !== 'Unknown' ? `Suspect\n${activeCase.suspectName}` : 'Suspect\nUnknown';
-        const victimLabel = activeCase?.victimName && activeCase.victimName !== 'Unknown' ? `Victim: ${activeCase.victimName}` : 'Victim: Unknown';
-        const compLabel = activeCase?.complainantName && activeCase.complainantName !== 'Unknown' ? `Complainant: ${activeCase.complainantName}` : 'Complainant: Unknown';
-
-        data = {
-          nodes: [
-            { id: caseNodeId, position: { x: 400, y: 300 }, data: { label: `FIR:\n${selectedCaseId}`, type: 'case', details: null }, style: caseStyle },
-            { id: accusedId, position: { x: 200, y: 100 }, data: { label: suspectLabel, type: 'accused', details: null }, style: accusedStyle },
-            { id: victimId, position: { x: 600, y: 150 }, data: { label: victimLabel, type: 'victim', details: null }, style: victimStyle },
-            { id: compId, position: { x: 400, y: 100 }, data: { label: compLabel, type: 'complainant', details: null }, style: compStyle }
-          ],
-          edges: [
-            { id: `e-${caseNodeId}-${accusedId}`, source: caseNodeId, target: accusedId, label: 'Accused In', animated: true, style: { stroke: '#ef4444', strokeWidth: 2 } },
-            { id: `e-${caseNodeId}-${victimId}`, source: caseNodeId, target: victimId, label: 'Victim Of', style: { stroke: '#22c55e' } },
-            { id: `e-${compId}-${caseNodeId}`, source: compId, target: caseNodeId, label: 'Filed By', style: { stroke: '#eab308' } }
-          ]
+        const addSingleNodes = (namesRaw: any, type: string, defaultLabel: string, style: any, baseY: number, edgeLabel: string, edgeStroke: string) => {
+           let names = namesRaw;
+           if (!names) names = ['Unknown'];
+           else if (!Array.isArray(names)) names = [names];
+           else if (names.length === 0) names = ['Unknown'];
+           
+           names.forEach((name: string, i: number) => {
+              const nodeId = `${type}-${selectedCaseId}-${i}`;
+              const label = name !== 'Unknown' ? `${defaultLabel}: ${name}` : `${defaultLabel}: Unknown`;
+              data.nodes.push({ id: nodeId, position: { x: type === 'accused' ? 200 : (type === 'victim' ? 600 : 400), y: baseY + (i * 70) }, data: { label: type === 'accused' ? `Suspect\n${name}` : label, type, details: null }, style });
+              
+              if (type === 'accused') {
+                 data.edges.push({ id: `e-${caseNodeId}-${nodeId}`, source: caseNodeId, target: nodeId, label: edgeLabel, animated: true, style: { stroke: edgeStroke, strokeWidth: 2 } });
+              } else if (type === 'victim') {
+                 data.edges.push({ id: `e-${caseNodeId}-${nodeId}`, source: caseNodeId, target: nodeId, label: edgeLabel, style: { stroke: edgeStroke } });
+              } else {
+                 data.edges.push({ id: `e-${nodeId}-${caseNodeId}`, source: nodeId, target: caseNodeId, label: edgeLabel, style: { stroke: edgeStroke } });
+              }
+           });
         };
+        
+        addSingleNodes(activeCase?.suspectName, 'accused', 'Suspect', accusedStyle, 100, 'Accused In', '#ef4444');
+        addSingleNodes(activeCase?.victimName, 'victim', 'Victim', victimStyle, 150, 'Victim Of', '#22c55e');
+        addSingleNodes(activeCase?.complainantName, 'complainant', 'Complainant', compStyle, 100, 'Filed By', '#eab308');
       }
     }
     let finalNodes = [...(data.nodes || [])];
@@ -210,13 +225,19 @@ const Network = () => {
 
              // If it's Face Intel, also connect to Suspect
              if (e.title === 'Facial Intelligence Logged') {
-               const accusedNodeId = `accused-${internalCaseId}`; // Assume first suspect for now
+               const accusedNodeId = `accused-${internalCaseId}-0`; // Assume first suspect for now
                const accusedNodeIndex = finalNodes.findIndex(n => n.id === accusedNodeId);
                
                if (accusedNodeIndex !== -1) {
                   // Update the unknown suspect node
                   const caseRecord = storeCases.find((c: any) => c.id === internalCaseId || c.id === selectedCaseId);
-                  const suspectName = caseRecord?.suspectName && caseRecord.suspectName !== 'Unknown' ? caseRecord.suspectName : 'Unknown Subject';
+                  
+                  let suspectName = 'Unknown Subject';
+                  if (caseRecord?.suspectName) {
+                     const names = Array.isArray(caseRecord.suspectName) ? caseRecord.suspectName : [caseRecord.suspectName];
+                     suspectName = names[0] && names[0] !== 'Unknown' ? names[0] : 'Unknown Subject';
+                  }
+
                   finalNodes[accusedNodeIndex] = {
                     ...finalNodes[accusedNodeIndex],
                     data: { 

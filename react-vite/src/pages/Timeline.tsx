@@ -47,8 +47,18 @@ const Timeline = () => {
   }, [queryCaseId, uniqueCases, selectedCaseId]);
 
   const filteredEvents = useMemo(() => {
-    if (selectedCaseId === 'all') return allEvents;
-    return allEvents.filter(e => e.caseId === selectedCaseId);
+    let evs = allEvents;
+    if (selectedCaseId !== 'all') {
+      evs = allEvents.filter(e => e.caseId === selectedCaseId);
+    }
+    // Deduplicate events to prevent double-logging from showing up
+    const seen = new Set();
+    return evs.filter(e => {
+      const key = `${e.caseId}-${e.title}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
   }, [allEvents, selectedCaseId]);
 
   return (

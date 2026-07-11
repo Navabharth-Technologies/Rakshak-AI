@@ -43,7 +43,10 @@ const CrimeSearch = () => {
       const cMaster = CASE_MASTERS.find(cm => cm.CrimeNo === c.id);
       
       let status = c.status;
-      let accused = c.suspectName || 'Unknown';
+      let accused = 'Unknown';
+      if (c.suspectName) {
+        accused = Array.isArray(c.suspectName) ? c.suspectName.join(', ') : c.suspectName;
+      }
       let location = c.district ? `District: ${c.district}` : 'PS Unit: 40006';
       let date = new Date().toLocaleDateString();
       let type = c.type;
@@ -87,8 +90,8 @@ const CrimeSearch = () => {
         if (activeCase) {
           // If we have an active case in the store, prioritize its real-time data
           setCaseDetails({
-            victims: [activeCase.victimName || 'Unknown Victim'],
-            complainants: [activeCase.complainantName || 'Unknown Complainant'],
+            victims: Array.isArray(activeCase.victimName) ? activeCase.victimName : [activeCase.victimName || 'Unknown Victim'],
+            complainants: Array.isArray(activeCase.complainantName) ? activeCase.complainantName : [activeCase.complainantName || 'Unknown Complainant'],
             sections: ['Investigation Pending'],
             assignedOfficer: activeCase.assignee && activeCase.assignee !== 'Unassigned' ? activeCase.assignee : 'Unassigned',
             evidence: combinedEvidence

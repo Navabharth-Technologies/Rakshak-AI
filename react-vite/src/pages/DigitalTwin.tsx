@@ -441,9 +441,9 @@ const DigitalTwin = () => {
           radius: 30,
           cases: 1,
           caseRef: c.id,
-          suspect: c.suspectName || 'Unknown',
-          victim: c.victimName || 'Unknown',
-          prediction: `FIR ${c.id} filed on ${c.date || 'N/A'}. Type: ${c.type || 'Unknown'}. Status: ${c.status || 'Active'}. Suspect: ${c.suspectName || 'Unknown'}.`,
+          suspect: Array.isArray(c.suspectName) ? c.suspectName.join(', ') : (c.suspectName || 'Unknown'),
+          victim: Array.isArray(c.victimName) ? c.victimName.join(', ') : (c.victimName || 'Unknown'),
+          prediction: `FIR ${c.id} filed on ${c.date || 'N/A'}. Type: ${c.type || 'Unknown'}. Status: ${c.status || 'Active'}. Suspect: ${Array.isArray(c.suspectName) ? c.suspectName.join(', ') : (c.suspectName || 'Unknown')}.`,
           actions: ['Deploy Rapid Response', 'Initiate Preliminary Investigation', 'Request Forensics'],
         };
       })
@@ -468,7 +468,7 @@ const DigitalTwin = () => {
         const offset = idx * 0.0002;
         return {
           id: 2000 + idx,
-          name: `Suspect: ${c.suspectName}`,
+          name: `Suspect: ${Array.isArray(c.suspectName) ? c.suspectName.join(', ') : c.suspectName}`,
           lat: resolvedLat + offset,
           lng: resolvedLng + offset,
           risk: 'Medium',
@@ -476,7 +476,7 @@ const DigitalTwin = () => {
           radius: 30,
           cases: 1,
           caseRef: c.id,
-          suspect: c.suspectName,
+          suspect: Array.isArray(c.suspectName) ? c.suspectName.join(', ') : c.suspectName,
           prediction: `Linked to FIR: ${c.id}. Crime type: ${c.type || 'Unknown'}. Last known location: ${c.location || c.district}.`,
           actions: ['Issue Lookout Notice', 'Initiate Surveillance', 'Coordinate with Narcotics Bureau'],
         };

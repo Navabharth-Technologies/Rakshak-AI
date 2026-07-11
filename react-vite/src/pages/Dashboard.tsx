@@ -1,6 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState, useMemo } from 'react';
-import { Users, FileText, AlertTriangle, CheckCircle, Shield, Activity, FileWarning, Database, Download } from 'lucide-react';
+import { Users, FileText, AlertTriangle, CheckCircle, Shield, Activity, FileWarning, Database, Download, X } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
 
 const KPICard = ({ title, value, icon: Icon, color }: any) => (
@@ -23,7 +23,67 @@ import { useToastStore } from '../store/toastStore';
 import { useTimelineStore } from '../store/timelineStore';
 import { useCaseStore } from '../store/caseStore';
 import { useUserStore } from '../store/userStore';
-import jsPDF from 'jspdf';
+import { generateCasePDF } from '../utils/pdfExport';
+
+const formatNames = (names: string | string[] | undefined): string => {
+  if (!names) return 'Unknown';
+  if (Array.isArray(names)) return names.length > 0 ? names.join(', ') : 'Unknown';
+  return names;
+};
+
+const MultiNameInput = ({ name, label, required, placeholder }: { name: string, label: string, required?: boolean, placeholder?: string }) => {
+  const [names, setNames] = useState<string[]>([]);
+  const [inputValue, setInputValue] = useState('');
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      const newName = inputValue.trim().replace(/[^a-zA-Z\s]/g, '').replace(/(.)\1\1/gi, '$1$1');
+      if (newName && !names.includes(newName)) {
+        setNames([...names, newName]);
+        setInputValue('');
+      }
+    }
+  };
+
+  const removeName = (index: number) => {
+    setNames(names.filter((_, i) => i !== index));
+  };
+
+  return (
+    <div>
+      <label className="block text-sm text-gray-400 mb-1">
+        {label} {required && <span className="text-danger">*</span>}
+      </label>
+      {names.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-2">
+          {names.map((n, i) => (
+            <div key={i} className="flex items-center bg-primary/20 text-primary px-3 py-1 rounded-full text-sm">
+              <span>{n}</span>
+              <button type="button" onClick={() => removeName(i)} className="ml-2 hover:text-white transition-colors">
+                <X className="w-3 h-3" />
+              </button>
+              <input type="hidden" name={name} value={n} />
+            </div>
+          ))}
+        </div>
+      )}
+      <input
+        type="text"
+        name={name}
+        className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm focus:border-primary focus:outline-none transition-colors"
+        placeholder={names.length === 0 ? placeholder : "Add another (Press Enter)"}
+        value={inputValue}
+        onChange={(e) => {
+           let val = e.target.value.replace(/[^a-zA-Z\s,]/g, '').replace(/(.)\1\1/gi, '$1$1');
+           setInputValue(val);
+        }}
+        onKeyDown={handleKeyDown}
+        required={required && names.length === 0}
+      />
+    </div>
+  );
+};
 
 const DeskOfficerDashboard = () => {
   const { cases, addCase } = useCaseStore();
@@ -85,9 +145,13 @@ const DeskOfficerDashboard = () => {
     const formData = new FormData(e.target);
     const incidentType = formData.get('incidentType') || 'Cyber Crime';
     const caseCategory = formData.get('caseCategory') || 'FIR';
-    const complainantName = formData.get('complainantName') || 'Unknown';
-    const victimName = formData.get('victimName') || 'Unknown';
-    const suspectName = formData.get('suspectName') || 'Unknown';
+    const complainantNames = (formData.getAll('complainantName') as string[]).filter(n => n.trim().length > 0);
+    const victimNames = (formData.getAll('victimName') as string[]).filter(n => n.trim().length > 0);
+    const suspectNames = (formData.getAll('suspectName') as string[]).filter(n => n.trim().length > 0);
+    
+    const complainantName = complainantNames.length > 0 ? complainantNames : ['Unknown'];
+    const victimName = victimNames.length > 0 ? victimNames : ['Unknown'];
+    const suspectName = suspectNames.length > 0 ? suspectNames : ['Unknown'];
     const district = formData.get('district') || 'Bengaluru';
     const incidentLocation = formData.get('incidentLocation') as string || '';
     
@@ -199,7 +263,7 @@ const DeskOfficerDashboard = () => {
                   <span className="text-[10px] px-2 py-1 rounded-full bg-primary/20 text-primary font-bold uppercase">{c.status}</span>
                 </div>
                 <h4 className="font-semibold text-white truncate mb-1 group-hover:text-primary transition-colors">{c.type}</h4>
-                <p className="text-xs text-gray-500">Complainant: {c.complainantName}</p>
+                <p className="text-xs text-gray-500">Complainant: {formatNames(c.complainantName)}</p>
              </div>
              <div className="flex justify-between items-center mt-2">
                <span className="text-xs text-gray-600">Assignee: {c.assignee}</span>
@@ -218,16 +282,13 @@ const DeskOfficerDashboard = () => {
         <form onSubmit={handleNewFir} className="space-y-4 max-h-[70vh] overflow-y-auto pr-2 custom-scrollbar">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Complainant Name <span className="text-danger">*</span></label>
-              <input name="complainantName" onInput={handleStrictNameInput} required type="text" className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm focus:border-primary focus:outline-none transition-colors" placeholder="Enter full name" />
+              <MultiNameInput name="complainantName" label="Complainant Name" required={true} placeholder="Enter full name" />
             </div>
             <div>
-              <label className="block text-sm text-gray-400 mb-1">Victim Name</label>
-              <input name="victimName" onInput={handleStrictNameInput} type="text" className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm focus:border-primary focus:outline-none transition-colors" placeholder="Enter full name (if known)" />
+              <MultiNameInput name="victimName" label="Victim Name" placeholder="Enter full name (if known)" />
             </div>
             <div className="md:col-span-2">
-              <label className="block text-sm text-gray-400 mb-1">Primary Suspect Name</label>
-              <input name="suspectName" onInput={handleStrictNameInput} type="text" className="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm focus:border-primary focus:outline-none transition-colors" placeholder="Enter name (if known)" />
+              <MultiNameInput name="suspectName" label="Primary Suspect Name" placeholder="Enter name (if known)" />
             </div>
           </div>
           
@@ -337,15 +398,15 @@ const DeskOfficerDashboard = () => {
               </div>
               <div>
                 <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Complainant Name</p>
-                <p className="text-gray-100">{selectedFir.complainantName || '—'}</p>
+                <p className="text-gray-100">{formatNames(selectedFir.complainantName) || '—'}</p>
               </div>
               <div>
                 <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Victim Name</p>
-                <p className="text-gray-100">{selectedFir.victimName || '—'}</p>
+                <p className="text-gray-100">{formatNames(selectedFir.victimName) || '—'}</p>
               </div>
               <div className="col-span-2 bg-black/20 p-3 rounded-lg border border-white/5">
-                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Primary Suspect</p>
-                <p className="text-gray-100 font-medium">{selectedFir.suspectName || 'Unknown'}</p>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Primary Suspect(s)</p>
+                <p className="text-gray-100 font-medium">{formatNames(selectedFir.suspectName) || 'Unknown'}</p>
               </div>
               <div>
                 <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">Assigned To</p>
@@ -412,37 +473,11 @@ const InvestigatorDashboard = () => {
     if (!caseToDownload) return;
     
     try {
-      // Download PDF file
-      const doc = new jsPDF();
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(22);
-      doc.text("CONFIDENTIAL CASE REPORT", 105, 20, { align: "center" });
-      
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "normal");
-      
-      let requiredEvidence = 'Standard physical & digital evidence';
-      const cType = caseToDownload.type.toLowerCase();
-      if (cType.includes('cyber')) requiredEvidence = 'Server Logs, IP Traces, Device Forensics';
-      else if (cType.includes('theft') || cType.includes('burglary')) requiredEvidence = 'CCTV Footage, Fingerprints, Witness Statements';
-      else if (cType.includes('assault') || cType.includes('violence')) requiredEvidence = 'Medical Reports, Weapon Recovery, Witness Statements';
-      else if (cType.includes('fraud') || cType.includes('financial')) requiredEvidence = 'Bank Statements, Transaction Logs, Audit Reports';
-      else if (cType.includes('missing')) requiredEvidence = 'Recent Photographs, Last Known Cell Tower Data, CCTV';
-      
-      doc.text(`Case ID: ${caseToDownload.id}`, 20, 40);
-      doc.text(`Required Evidence: ${requiredEvidence}`, 20, 50);
-      doc.text(`Current Status: ${caseToDownload.status}`, 20, 60);
-
-      doc.setLineWidth(0.5);
-      doc.line(20, 90, 190, 90);
-
-      doc.setFontSize(10);
-      doc.setTextColor(100);
-      doc.text("Generated by Rakshak-AI Intelligence System", 105, 100, { align: "center" });
-
-      doc.save(`Case_Report_${caseToDownload.id}.pdf`);
-
-      addToast('Case PDF report downloaded successfully', 'success');
+      if (generateCasePDF(caseToDownload)) {
+        addToast('Case PDF report downloaded successfully', 'success');
+      } else {
+        addToast('Failed to generate PDF report', 'error');
+      }
       if (selectedCase && caseToDownload.id === selectedCase.id) {
         setSelectedCase(null);
       }
@@ -765,36 +800,11 @@ const SupervisorDashboard = () => {
     if (!caseToDownload) return;
     
     try {
-      const doc = new jsPDF();
-      doc.setFont("helvetica", "bold");
-      doc.setFontSize(22);
-      doc.text("CONFIDENTIAL CASE REPORT", 105, 20, { align: "center" });
-      
-      doc.setFontSize(12);
-      doc.setFont("helvetica", "normal");
-      
-      let requiredEvidence = 'Standard physical & digital evidence';
-      const cType = caseToDownload.type.toLowerCase();
-      if (cType.includes('cyber')) requiredEvidence = 'Server Logs, IP Traces, Device Forensics';
-      else if (cType.includes('theft') || cType.includes('burglary')) requiredEvidence = 'CCTV Footage, Fingerprints, Witness Statements';
-      else if (cType.includes('assault') || cType.includes('violence')) requiredEvidence = 'Medical Reports, Weapon Recovery, Witness Statements';
-      else if (cType.includes('fraud') || cType.includes('financial')) requiredEvidence = 'Bank Statements, Transaction Logs, Audit Reports';
-      else if (cType.includes('missing')) requiredEvidence = 'Recent Photographs, Last Known Cell Tower Data, CCTV';
-      
-      doc.text(`Case ID: ${caseToDownload.id}`, 20, 40);
-      doc.text(`Required Evidence: ${requiredEvidence}`, 20, 50);
-      doc.text(`Current Status: ${caseToDownload.status}`, 20, 60);
-
-      doc.setLineWidth(0.5);
-      doc.line(20, 90, 190, 90);
-
-      doc.setFontSize(10);
-      doc.setTextColor(100);
-      doc.text("Generated by Rakshak-AI Intelligence System", 105, 100, { align: "center" });
-
-      doc.save(`Case_Report_${caseToDownload.id}.pdf`);
-
-      addToast('Case PDF report downloaded successfully', 'success');
+      if (generateCasePDF(caseToDownload)) {
+        addToast('Case PDF report downloaded successfully', 'success');
+      } else {
+        addToast('Failed to generate PDF report', 'error');
+      }
     } catch (err) {
       console.error("PDF generation failed:", err);
       addToast('Failed to generate PDF report', 'error');
