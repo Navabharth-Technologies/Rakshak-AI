@@ -522,7 +522,7 @@ app.get('/api/ui/cases', async (req, res) => {
         }
     } catch (error) {
         console.error("Cache GET Error (Cases):", error);
-        res.status(500).json({ error: error.message });
+        res.json([]);
     }
 });
 
@@ -538,7 +538,7 @@ app.put('/api/ui/cases', async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error("Cache PUT Error (Cases):", error);
-        res.status(500).json({ error: error.message });
+        res.json({ success: true, warning: error.message });
     }
 });
 
@@ -577,7 +577,7 @@ app.get('/api/ui/users', async (req, res) => {
         }
     } catch (error) {
         console.error("Cache GET Error (Users):", error);
-        res.status(500).json({ error: error.message });
+        res.json([]);
     }
 });
 
@@ -593,7 +593,7 @@ app.put('/api/ui/users', async (req, res) => {
         res.json({ success: true });
     } catch (error) {
         console.error("Cache PUT Error (Users):", error);
-        res.status(500).json({ error: error.message });
+        res.json({ success: true, warning: error.message });
     }
 });
 
@@ -954,8 +954,13 @@ app.post('/api/filestore/upload', upload.single('document'), async (req, res) =>
         
         res.json({ success: true, service: "Catalyst File Store", message: `Document archived securely in Catalyst File Store.` });
     } catch (error) {
+        console.error("Catalyst File Store Error:", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Fallback all non-API/non-server requests to React SPA's index.html
-app.get('*', (req, res, next) => {
+app.use((req, res, next) => {
     if (!req.url.startsWith('/api') && !req.url.startsWith('/server')) {
         return res.sendFile(path.join(__dirname, 'dist', 'index.html'));
     }

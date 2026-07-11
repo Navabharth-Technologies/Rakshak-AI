@@ -2,7 +2,7 @@
   {
     "name": "Login Redirect",
     "source_endpoint": "/index.html",
-    "target_endpoint": "/index.html",
+    "target_endpoint": "/app/index.html",
     "target": "rakshak-client",
     "method": "GET",
     "throttling": {
