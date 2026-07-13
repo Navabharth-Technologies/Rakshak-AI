@@ -406,13 +406,46 @@ const AiAssistant = () => {
 
   const handleMicClick = () => {
     if (isListening) return;
-    setIsListening(true);
-    addToast('Voice command active. Listening...', 'info');
-    setTimeout(() => {
-      setInput(i18n.language === 'kn' ? 'ಮೈಸೂರಿನಲ್ಲಿರುವ ಎಲ್ಲಾ ದರೋಡೆ ಪ್ರಕರಣಗಳನ್ನು ತೋರಿಸಿ' : 'Show all robbery cases in Mysore');
+    
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      addToast('Your browser does not support Speech Recognition.', 'error');
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+    // Map i18n language to Web Speech API locale
+    recognition.lang = i18n.language === 'kn' ? 'kn-IN' : (i18n.language === 'hi' ? 'hi-IN' : 'en-IN');
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      setIsListening(true);
+      addToast('Microphone active. Please speak now...', 'info');
+    };
+
+    recognition.onresult = (event: any) => {
+      const transcript = event.results[0][0].transcript;
+      setInput(transcript);
+      addToast('Voice captured successfully.', 'success');
+    };
+
+    recognition.onerror = (event: any) => {
+      console.error("Speech recognition error", event.error);
+      addToast(`Microphone error: ${event.error}`, 'error');
       setIsListening(false);
-      addToast('Voice command processed.', 'success');
-    }, 2500);
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    try {
+      recognition.start();
+    } catch (err) {
+      console.error(err);
+      setIsListening(false);
+    }
   };
 
   const handleSend = async (text = input) => {

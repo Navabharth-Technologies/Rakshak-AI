@@ -17,5 +17,16 @@
   },
   "apig": {
     "enabled": false
+  },
+  "connections": {
+    "ZohoQuickML": {
+      "zohoquickml_connection": {
+        "client_id": "dummy",
+        "client_secret": "dummy",
+        "auth_url": "dummy",
+        "refresh_url": "dummy",
+        "refresh_token": "dummy"
+      }
+    }
   }
 }

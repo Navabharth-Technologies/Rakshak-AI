@@ -7,7 +7,7 @@ import { INVESTIGATOR_CASES } from '../utils/mockData';
 
 const syncCasesToBackend = async (cases: any[]) => {
   try {
-    await axios.put('/server/rakshak_function/api/ui/cases', cases);
+    await axios.put('/server/rakshak_function/api/cases', cases);
   } catch (error) {
     console.error('Failed to sync cases to backend', error);
   }
@@ -50,7 +50,7 @@ export const useCaseStore = create<CaseStore>()(
       },
       fetchCases: async () => {
         try {
-          const res = await axios.get('/server/rakshak_function/api/ui/cases');
+          const res = await axios.get('/server/rakshak_function/api/cases');
           if (res.data && Array.isArray(res.data)) {
             if (res.data.length > 0) {
               set((state) => {

@@ -111,17 +111,17 @@ app.get('/api/search', async (req, res) => {
 
     try {
         const zcql = catalystApp.zcql();
-        
+
         // Execute real-time ZCQL Search across the Data Store
         const query = `
             SELECT CaseMaster.ROWID, CaseMaster.CaseNo, CaseMaster.PoliceStationID
             FROM CaseMaster
             WHERE CaseMaster.CaseNo LIKE '%${searchQuery}%'
         `;
-        
+
         console.log(`[Deep Search] Executing real-time ZCQL search for: ${searchQuery}`);
         const result = await zcql.executeZCQLQuery(query);
-        
+
         const mappedResults = result.map(row => ({
             id: row.CaseMaster.ROWID,
             case_no: row.CaseMaster.CaseNo || 'Unknown Case',
@@ -153,7 +153,7 @@ app.post('/api/quickml/summarize', express.json(), async (req, res) => {
         const connection = catalystApp.connection({
             connectorName: 'ZohoQuickML' // Ensure this matches your Connector name in Catalyst console
         }).getConnector('zohoquickml_connection'); // Ensure this matches your Connection link name
-        
+
         const accessToken = await connection.getAccessToken();
 
         const headers = {
@@ -229,13 +229,13 @@ app.post('/api/assistant/chat', express.json(), async (req, res) => {
         }
 
         const catalystApp = catalyst.initialize(req);
-        
+
         let dbRecords = [];
         let dbErrorMessage = "";
-        
+
         // 1. Check if the frontend provided the cases directly from its store
         if (req.body.contextCases && Array.isArray(req.body.contextCases) && req.body.contextCases.length > 0) {
-            dbRecords = req.body.contextCases.map((c, idx) => 
+            dbRecords = req.body.contextCases.map((c, idx) =>
                 `Case ID: ${c.id || idx} - Type: ${c.type || 'Unknown'} - Status: ${c.status || 'Active'} - District: ${c.district || c.location || 'Unknown'} - Suspect: ${c.suspectName || 'Unknown'} - Date: ${c.date || 'N/A'}`
             );
         } else {
@@ -243,13 +243,13 @@ app.post('/api/assistant/chat', express.json(), async (req, res) => {
             try {
                 const cache = catalystApp.cache().segment('DefaultSegment');
                 let casesData = await cache.get('ui_cases').catch(() => null);
-                
+
                 if (casesData) {
                     if (typeof casesData === 'string') {
                         casesData = JSON.parse(casesData);
                     }
-                    
-                    dbRecords = casesData.map(c => 
+
+                    dbRecords = casesData.map(c =>
                         `Case ID: ${c.id} - Type: ${c.type} - Status: ${c.status} - District: ${c.district} - Suspect: ${c.suspectName} - Date: ${c.date}`
                     );
                 }
@@ -258,15 +258,15 @@ app.post('/api/assistant/chat', express.json(), async (req, res) => {
                 console.error("Cache Fetch Error in AI Assistant:", dbErr);
             }
         }
-        
+
         // If the cache is completely empty, inject some mock records so the Assistant has data to work with
         if (dbRecords.length === 0) {
             const mockCases = getFallbackData().cases;
             dbRecords = mockCases.map(c => `CaseNo: ${c.CaseNo} - Accused: ${c.accused_name} - Status: ${c.status_name} - Crime Registered Date: ${c.CrimeRegisteredDate}`);
         }
 
-        const databaseContext = dbRecords.length > 0 
-            ? `Here is the current database information:\n${dbRecords.join('\n')}` 
+        const databaseContext = dbRecords.length > 0
+            ? `Here is the current database information:\n${dbRecords.join('\n')}`
             : `No active cases found in the database. (Error: ${dbErrorMessage})`;
 
         let llmResponse = "";
@@ -276,7 +276,7 @@ app.post('/api/assistant/chat', express.json(), async (req, res) => {
             const connection = catalystApp.connection({
                 connectorName: 'ZohoQuickML'
             }).getConnector('zohoquickml_connection');
-            
+
             const accessToken = await connection.getAccessToken();
 
             const headers = {
@@ -315,11 +315,11 @@ app.post('/api/assistant/chat', express.json(), async (req, res) => {
             }
         } catch (err) {
             console.error("QuickML Connection Error:", err.message);
-            
+
             // Smart Fallback: Since the LLM is disconnected, manually filter the cases based on the user's query
             const lowerQuery = query.toLowerCase();
             let filteredRecords = dbRecords;
-            
+
             if (lowerQuery.includes('mysuru') || lowerQuery.includes('mysore')) {
                 filteredRecords = dbRecords.filter(r => r.toLowerCase().includes('mysuru') || r.toLowerCase().includes('mysore'));
             } else if (lowerQuery.includes('bengaluru') || lowerQuery.includes('bangalore')) {
@@ -332,8 +332,8 @@ app.post('/api/assistant/chat', express.json(), async (req, res) => {
                 filteredRecords = filteredRecords.filter(r => r.toLowerCase().includes('theft') || r.toLowerCase().includes('robbery') || r.toLowerCase().includes('burglary'));
             }
 
-            const filteredContext = filteredRecords.length > 0 
-                ? `Here is the current database information matching your query:\n${filteredRecords.join('\n')}` 
+            const filteredContext = filteredRecords.length > 0
+                ? `Here is the current database information matching your query:\n${filteredRecords.join('\n')}`
                 : "No active cases found matching your criteria in the database.";
 
             llmResponse = "QuickML AI Model is currently disconnected. Here is the raw real-time data from the Datastore:\n\n" + filteredContext;
@@ -440,29 +440,29 @@ app.post('/api/zia/translate', express.json(), async (req, res) => {
 app.post('/api/smartbrowz/generate-pdf', express.json(), async (req, res) => {
     try {
         const { htmlContent, caseId } = req.body;
-        
+
         console.log(`[SmartBrowz] Initializing headless browser instance for Case ${caseId}...`);
-        
+
         // In a fully authenticated Catalyst environment, this would be:
         // const catalystApp = catalyst.initialize(req);
         // const smartBrowz = catalystApp.smartBrowz();
         // const pdfStream = await smartBrowz.convertToPdf(htmlContent, { format: 'A4' });
-        
+
         // For the hackathon demo, we simulate the headless processing delay
         await new Promise(resolve => setTimeout(resolve, 1500));
-        
+
         console.log(`[SmartBrowz] PDF successfully generated via Catalyst Headless Browser.`);
 
-        res.json({ 
-            success: true, 
-            service: "Catalyst SmartBrowz (Headless PDF)", 
-            message: "PDF successfully generated via SmartBrowz." 
+        res.json({
+            success: true,
+            service: "Catalyst SmartBrowz (Headless PDF)",
+            message: "PDF successfully generated via SmartBrowz."
         });
     } catch (error) {
         console.error("Catalyst SmartBrowz Error:", error);
-        res.status(500).json({ 
-            success: false, 
-            error: "Error communicating with SmartBrowz." 
+        res.status(500).json({
+            success: false,
+            error: "Error communicating with SmartBrowz."
         });
     }
 });
@@ -471,16 +471,16 @@ app.post('/api/smartbrowz/generate-pdf', express.json(), async (req, res) => {
 app.post('/api/auth/login', express.json(), async (req, res) => {
     try {
         const { email, password } = req.body;
-        
+
         console.log(`[Catalyst Auth] Attempting to authenticate user: ${email}`);
-        
+
         await new Promise(resolve => setTimeout(resolve, 800)); // Simulate network delay
-        
+
         if (email && password) {
             const name = email.charAt(0).toUpperCase() + email.slice(1).split('@')[0];
             let role = 'Investigator';
             let lowerEmail = email.toLowerCase();
-            
+
             if (lowerEmail.includes('admin')) {
                 role = 'Super Admin';
             } else if (lowerEmail.includes('supervisor')) {
@@ -488,10 +488,10 @@ app.post('/api/auth/login', express.json(), async (req, res) => {
             } else if (lowerEmail.includes('desk')) {
                 role = 'Desk Officer';
             }
-            
-            return res.json({ success: true, service: "Catalyst Authentication", user: { id: Date.now(), name: name, username: email, role: role, status: 'Active' }});
+
+            return res.json({ success: true, service: "Catalyst Authentication", user: { id: Date.now(), name: name, username: email, role: role, status: 'Active' } });
         }
-        
+
         res.status(401).json({ success: false, error: "Invalid credentials in Catalyst UserManagement" });
     } catch (error) {
         console.error("Catalyst Auth Error:", error);
@@ -554,23 +554,23 @@ app.get('/api/ui/users', async (req, res) => {
             if (typeof usersData === 'string') {
                 usersData = JSON.parse(usersData);
             }
-            
+
             // Hard override Tejashwini to Super Admin to fix persistent cache issues
             if (Array.isArray(usersData)) {
                 usersData = usersData.map(u => {
                     if (u.id === 'U001' || u.name === 'Tejashwini') {
-                        return { 
-                            ...u, 
-                            name: 'Super Admin', 
-                            role: 'Super Admin', 
-                            username: 'admin', 
-                            password: 'admin' 
+                        return {
+                            ...u,
+                            name: 'Super Admin',
+                            role: 'Super Admin',
+                            username: 'admin',
+                            password: 'admin'
                         };
                     }
                     return u;
                 });
             }
-            
+
             res.json(usersData);
         } else {
             res.json([]);
@@ -916,13 +916,13 @@ app.post('/api/scan-barcode', upload.single('image'), async (req, res) => {
 app.post('/api/mail/send', express.json(), async (req, res) => {
     const catalystApp = catalyst.initialize(req);
     const { to, subject, content } = req.body;
-    
+
     try {
         console.log(`[Catalyst Mail] Sending alert email to ${to}`);
         // Actual Catalyst Mail SDK call (Requires verified sender in console)
         // const email = catalystApp.email();
         // await email.sendMail({ ... });
-        
+
         res.json({ success: true, service: "Catalyst Mail / Push Notifications", message: "Emergency Alert Dispatched Successfully via Catalyst Mail." });
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -933,9 +933,9 @@ app.post('/api/mail/send', express.json(), async (req, res) => {
 app.post('/api/cron/daily-briefing', express.json(), async (req, res) => {
     console.log(`[Catalyst Cron] Running scheduled nightly job: Daily Briefing Aggregation`);
     try {
-        res.json({ 
-            success: true, 
-            service: "Catalyst Cron / Job Scheduler", 
+        res.json({
+            success: true,
+            service: "Catalyst Cron / Job Scheduler",
             message: "Cron Job Executed. Nightly intelligence aggregated.",
             timestamp: new Date().toISOString()
         });
@@ -948,10 +948,10 @@ app.post('/api/cron/daily-briefing', express.json(), async (req, res) => {
 app.post('/api/filestore/upload', upload.single('document'), async (req, res) => {
     try {
         if (!req.file) return res.status(400).json({ error: 'No document uploaded' });
-        
+
         console.log(`[Catalyst File Store] Uploading document: ${req.file.originalname}`);
         if (fs.existsSync(req.file.path)) fs.unlinkSync(req.file.path);
-        
+
         res.json({ success: true, service: "Catalyst File Store", message: `Document archived securely in Catalyst File Store.` });
     } catch (error) {
         console.error("Catalyst File Store Error:", error);
