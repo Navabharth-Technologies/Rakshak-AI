@@ -1,0 +1,12 @@
+{
+  "name": "rakshak-ai",
+  "version": "1.0.0",
+  "description": "Rakshak-AI Root Project",
+  "private": true,
+  "scripts": {
+    "install": "npm install --prefix react-vite && npm install --prefix functions/rakshak_function",
+    "build": "npm run build --prefix react-vite",
+    "start": "node functions/rakshak_function/index.js"
+  },
+  "dependencies": {}
+}
