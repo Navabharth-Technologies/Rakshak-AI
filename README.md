@@ -1,11 +1,13 @@
 # Rakshak AI 🛡️
 
-Rakshak AI is an advanced law enforcement and crime analysis application designed to assist in case management, report generation, and data-driven policing. It integrates AI-driven capabilities like OCR (Optical Character Recognition) for evidence extraction, speech recognition, and interactive maps for spatial crime analysis. The platform leverages **Zoho Catalyst** for its robust serverless backend and **React** for a highly interactive and responsive user interface.
+Rakshak AI is an advanced law enforcement and crime analysis application designed to assist in case management, report generation, and data-driven policing. It integrates AI-driven capabilities like OCR (Optical Character Recognition) for evidence extraction, speech recognition, face analyzier, barcode scanner, sensitive evidence image detction and interactive maps for spatial crime analysis. The platform leverages **Zoho Catalyst** for its robust serverless backend and **React** for a highly interactive and responsive user interface.
 
 ## 🌐 Live Application
 Access the deployed application here: **https://rakshak-ai-926449439.development.catalystserverless.com**
 
-*(Note: If the application requires a login, you can provide test credentials here, e.g., Username: admin | Password: admin)*
+*(Note: The application requires a login, the credentials are as follows:
+For Admin; Username: admin | Password: admin
+For Desk Officer : Username: ramesh | Password: password)*
 
 ---
 
