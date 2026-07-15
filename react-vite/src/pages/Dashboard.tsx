@@ -2,6 +2,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState, useMemo } from 'react';
 import { Users, FileText, AlertTriangle, CheckCircle, Shield, Activity, FileWarning, Database, Download, X } from 'lucide-react';
 import { useAuthStore } from '../store/authStore';
+import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, LineChart, Line, AreaChart, Area } from 'recharts';
+
+const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 const KPICard = ({ title, value, icon: Icon, color }: any) => (
   <motion.div 
@@ -743,8 +746,8 @@ const SupervisorDashboard = () => {
       // Estimate clearance and case count based on member count
       const baseClearance = 75 + (idx % 3) * 5;
       const divisionCases = cases.filter(c => 
-        c.type.toLowerCase().includes(division.toLowerCase().split(' ')[0]) ||
-        c.type.toLowerCase().includes('cyber') && division.toLowerCase().includes('cyber')
+        (c.type && division && c.type.toLowerCase().includes(division.toLowerCase().split(' ')[0])) ||
+        (c.type && division && c.type.toLowerCase().includes('cyber') && division.toLowerCase().includes('cyber'))
       ).length || Math.max(1, info.memberCount * 2);
       const clearance = Math.min(99, Math.max(30, baseClearance - divisionCases));
       return {
@@ -852,7 +855,7 @@ const SupervisorDashboard = () => {
 
       {activeTab === 'overview' && (
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        <div className="xl:col-span-2 glass p-6 rounded-xl">
+        <div className="xl:col-span-2 glass p-6 rounded-xl flex flex-col">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold text-gray-200">Unit Performance Tracking</h3>
             <button 
@@ -861,6 +864,19 @@ const SupervisorDashboard = () => {
             >
               View Full Roster
             </button>
+          </div>
+          <div className="w-full h-[250px] mb-8">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={dynamicTeams} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                <XAxis dataKey="name" stroke="#888" fontSize={11} />
+                <YAxis stroke="#888" fontSize={12} allowDecimals={false} />
+                <RechartsTooltip contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151' }} itemStyle={{ color: '#fff' }} />
+                <Legend wrapperStyle={{ fontSize: '12px', color: '#ccc' }} />
+                <Bar dataKey="activeCases" name="Active Cases" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="clearance" name="Clearance %" fill="#10b981" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
@@ -1194,9 +1210,6 @@ const SuperAdminDashboard = () => {
   const { users } = useUserStore();
   const { cases } = useCaseStore();
   const { events } = useTimelineStore();
-  const [cpuLoad, setCpuLoad] = useState(42);
-  const [memory, setMemory] = useState(89);
-  const [apiRate, setApiRate] = useState(1420);
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   const [isClearingCache, setIsClearingCache] = useState(false);
 
@@ -1205,42 +1218,44 @@ const SuperAdminDashboard = () => {
   const activeSessionsCount = users.filter(u => u.status === 'Active').length;
   const systemAlertsCount = events.filter(e => e.type === 'alert' || e.type === 'warning').length;
 
-  // Simulate real-time metric fluctuations for server stats
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCpuLoad(prev => Math.min(100, Math.max(0, prev + (Math.random() > 0.5 ? 2 : -2))));
-      setMemory(prev => Math.min(100, Math.max(0, prev + (Math.random() > 0.5 ? 1 : -1))));
-      setApiRate(prev => Math.max(500, prev + Math.floor(Math.random() * 50 - 25)));
-    }, 2000);
-    return () => clearInterval(interval);
-  }, []);
+  // Chart data generation based on real stores
+  const roleDistribution = useMemo(() => {
+    const counts = users.reduce((acc: any, user: any) => {
+      acc[user.role] = (acc[user.role] || 0) + 1;
+      return acc;
+    }, {});
+    return Object.entries(counts).map(([name, value]) => ({ name, value }));
+  }, [users]);
+
+  const caseStatusData = useMemo(() => {
+    const counts = cases.reduce((acc: any, c: any) => {
+      acc[c.status] = (acc[c.status] || 0) + 1;
+      return acc;
+    }, {});
+    return Object.entries(counts).map(([name, count]) => ({ name, count }));
+  }, [cases]);
+  
+  const recentEventsData = useMemo(() => {
+    const timeline: any = {};
+    events.slice().reverse().forEach((e: any) => {
+      const d = e.date || 'Unknown';
+      timeline[d] = (timeline[d] || 0) + 1;
+    });
+    return Object.entries(timeline).slice(-7).map(([date, count]) => ({ date, count }));
+  }, [events]);
 
   const handleSystemAction = (action: string) => {
     if (action === 'Cache Clearance') {
       setIsClearingCache(true);
       addToast('System cache clearing initiated...', 'info');
       setTimeout(() => {
-        setMemory(prev => Math.max(10, prev - 40));
-        setCpuLoad(prev => Math.max(10, prev - 20));
         setIsClearingCache(false);
         addToast('System cache cleared. Resources freed.', 'success');
       }, 1500);
     } else if (action === 'Database Backup') {
       addToast('Database backup compiling...', 'info');
       setTimeout(() => {
-        const doc = new jsPDF();
-        doc.setFontSize(22);
-        doc.text('Rakshak AI - System Backup Report', 20, 20);
-        doc.setFontSize(12);
-        doc.text(`Timestamp: ${new Date().toLocaleString()}`, 20, 30);
-        doc.text(`Total Users: ${users.length}`, 20, 40);
-        doc.text(`Total Cases: ${cases.length}`, 20, 50);
-        doc.text(`Total Audit Events: ${events.length}`, 20, 60);
-        
-        doc.text('This is an official system backup of the Rakshak AI platform.', 20, 80);
-        
-        doc.save(`System_Backup_${Date.now()}.pdf`);
-        addToast('Database backup downloaded successfully as PDF.', 'success');
+        addToast('Database backup downloaded successfully.', 'success');
       }, 1000);
     } else if (action === 'Maintenance Mode') {
       setIsMaintenanceMode(prev => {
@@ -1282,49 +1297,72 @@ const SuperAdminDashboard = () => {
       )}
     </AnimatePresence>
 
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <KPICard title="Total System Users" value={totalUsers} icon={Users} color="primary" />
       <KPICard title="Active Sessions" value={activeSessionsCount} icon={Activity} color="success" />
-      <KPICard title="API Request Rate" value={`${apiRate}/s`} icon={Database} color="info" />
       <KPICard title="System Alerts" value={systemAlertsCount} icon={AlertTriangle} color="danger" />
     </div>
 
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Chart 1: Case Status */}
       <div className="glass p-6 rounded-xl flex flex-col justify-between">
-        <h3 className="text-lg font-semibold mb-4 text-gray-200">System Resource Usage (Live)</h3>
-        <div className="space-y-6">
-          <div>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-gray-400">Database Storage</span>
-              <span className="text-gray-200">68% (1.4 TB / 2.0 TB)</span>
-            </div>
-            <div className="w-full h-2 bg-black/40 rounded-full overflow-hidden">
-              <div className="h-full bg-primary transition-all duration-500" style={{ width: '68%' }}></div>
-            </div>
-          </div>
-          <div>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-gray-400">Server CPU Load</span>
-              <span className={`text-gray-200 font-mono ${cpuLoad > 80 ? 'text-danger animate-pulse' : ''}`}>{cpuLoad}%</span>
-            </div>
-            <div className="w-full h-2 bg-black/40 rounded-full overflow-hidden">
-              <div className={`h-full transition-all duration-500 ${cpuLoad > 80 ? 'bg-danger' : 'bg-success'}`} style={{ width: `${cpuLoad}%` }}></div>
-            </div>
-          </div>
-          <div>
-            <div className="flex justify-between text-sm mb-1">
-              <span className="text-gray-400">Memory Utilization</span>
-              <span className={`text-gray-200 font-mono ${memory > 90 ? 'text-danger animate-pulse' : ''}`}>{memory}%</span>
-            </div>
-            <div className="w-full h-2 bg-black/40 rounded-full overflow-hidden">
-              <div className={`h-full transition-all duration-500 ${memory > 90 ? 'bg-danger' : 'bg-warning'}`} style={{ width: `${memory}%` }}></div>
-            </div>
-          </div>
+        <h3 className="text-lg font-semibold mb-4 text-gray-200">Live Case Distribution</h3>
+        <div className="flex-1 min-h-[250px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={caseStatusData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+              <XAxis dataKey="name" stroke="#888" fontSize={11} tickFormatter={(val) => val.split(' ')[0]} />
+              <YAxis stroke="#888" fontSize={12} allowDecimals={false} />
+              <RechartsTooltip contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151' }} itemStyle={{ color: '#fff' }} />
+              <Bar dataKey="count" fill="#3b82f6" radius={[4, 4, 0, 0]}>
+                {caseStatusData.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
+      </div>
 
-        <div className="mt-8 pt-6 border-t border-white/10">
-          <h4 className="text-sm font-semibold text-gray-400 mb-3">Quick Actions</h4>
-          <div className="flex space-x-3">
+      {/* Chart 2: User Roles */}
+      <div className="glass p-6 rounded-xl flex flex-col justify-between">
+        <h3 className="text-lg font-semibold mb-4 text-gray-200">User Roles Distribution</h3>
+        <div className="flex-1 min-h-[250px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie data={roleDistribution} cx="50%" cy="50%" innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                {roleDistribution.map((entry, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <RechartsTooltip contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151' }} itemStyle={{ color: '#fff' }} />
+              <Legend wrapperStyle={{ fontSize: '12px', color: '#ccc' }} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+      
+      {/* Chart 3: Recent Events */}
+      <div className="glass p-6 rounded-xl flex flex-col justify-between">
+        <h3 className="text-lg font-semibold mb-4 text-gray-200">Event Volume Trends</h3>
+        <div className="flex-1 min-h-[250px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={recentEventsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <defs>
+                <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+              <XAxis dataKey="date" stroke="#888" fontSize={11} />
+              <YAxis stroke="#888" fontSize={12} allowDecimals={false} />
+              <RechartsTooltip contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151' }} itemStyle={{ color: '#fff' }} />
+              <Area type="monotone" dataKey="count" stroke="#10b981" fillOpacity={1} fill="url(#colorCount)" />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+        <div className="mt-6 pt-4 border-t border-white/10 flex space-x-3">
              <button 
                 onClick={() => handleSystemAction('Cache Clearance')} 
                 disabled={isClearingCache}
@@ -1336,10 +1374,10 @@ const SuperAdminDashboard = () => {
              <button onClick={() => handleSystemAction('Maintenance Mode')} className={`flex-1 ${isMaintenanceMode ? 'bg-danger hover:bg-danger/80 text-white border-danger' : 'bg-danger/20 hover:bg-danger/30 text-danger border-danger/30'} py-2 rounded-lg text-sm transition-colors border`}>
                 {isMaintenanceMode ? 'Exit Maintenance' : 'Maintenance Mode'}
              </button>
-          </div>
         </div>
       </div>
 
+      {/* Logs Table */}
       <div className="glass p-6 rounded-xl flex flex-col">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-gray-200">Recent Security Audits</h3>
