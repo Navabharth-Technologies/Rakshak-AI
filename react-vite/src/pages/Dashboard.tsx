@@ -707,14 +707,14 @@ const SupervisorDashboard = () => {
   const { addEvent } = useTimelineStore();
   const { cases, updateCase, fetchCases } = useCaseStore();
   const { users } = useUserStore();
-  const { trends, fetchTrends } = useTrendStore();
+  const { trends, generateTrends } = useTrendStore();
   const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [customDate, setCustomDate] = useState('');
   
   useEffect(() => {
     fetchCases();
-    fetchTrends();
-  }, [fetchCases, fetchTrends]);
+    generateTrends(cases, customDate);
+  }, [fetchCases, generateTrends, cases, customDate]);
   const [activeTab, setActiveTab] = useState<'overview' | 'dispatch' | 'active'>('overview');
   const [selectedCases, setSelectedCases] = useState<string[]>([]);
   const [bulkAssignee, setBulkAssignee] = useState<string>('');
@@ -987,7 +987,7 @@ const SupervisorDashboard = () => {
                   value={customDate}
                   onChange={(e) => {
                     setCustomDate(e.target.value);
-                    fetchTrends(e.target.value);
+                    generateTrends(cases, e.target.value);
                   }}
                   title="Select Base Date"
                 />
@@ -1271,15 +1271,15 @@ const SuperAdminDashboard = () => {
   const { users } = useUserStore();
   const { cases } = useCaseStore();
   const { events } = useTimelineStore();
-  const { trends, fetchTrends } = useTrendStore();
+  const { trends, generateTrends } = useTrendStore();
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   const [isClearingCache, setIsClearingCache] = useState(false);
   const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   const [customDate, setCustomDate] = useState('');
 
   useEffect(() => {
-    fetchTrends();
-  }, [fetchTrends]);
+    generateTrends(cases, customDate);
+  }, [generateTrends, cases, customDate]);
 
   // Derived real-time metrics
   const totalUsers = users.length;
@@ -1422,7 +1422,7 @@ const SuperAdminDashboard = () => {
                 value={customDate}
                 onChange={(e) => {
                   setCustomDate(e.target.value);
-                  fetchTrends(e.target.value);
+                  generateTrends(cases, e.target.value);
                 }}
                 title="Select Base Date"
               />
