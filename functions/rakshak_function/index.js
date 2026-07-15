@@ -602,20 +602,24 @@ app.get('/api/trends', async (req, res) => {
         const catalystApp = catalyst.initialize(req);
         const cache = catalystApp.cache().segment('DefaultSegment');
         
-        let trendsData = await cache.get('CrimeTrends').catch(() => null);
+        let trendsData = null;
+        try {
+            const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Cache timeout')), 2000));
+            trendsData = await Promise.race([cache.get('CrimeTrends'), timeoutPromise]).catch(() => null);
+        } catch(e) {}
         
-        if (trendsData) {
+        if (trendsData && !req.query.date) {
             if (typeof trendsData === 'string') {
                 trendsData = JSON.parse(trendsData);
             }
             return res.json(trendsData);
         }
         
-        // Fallback mock trends if cron hasn't run yet
-        const today = new Date();
+        // Fallback mock trends if cron hasn't run yet or a specific date is requested
+        const targetDate = req.query.date ? new Date(req.query.date as string) : new Date();
         const generateTrends = (days, base) => {
             return Array.from({length: days}).map((_, i) => {
-                const d = new Date(today);
+                const d = new Date(targetDate);
                 d.setDate(d.getDate() - (days - 1 - i));
                 return {
                     date: d.toISOString().split('T')[0],

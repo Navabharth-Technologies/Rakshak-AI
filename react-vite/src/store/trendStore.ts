@@ -8,16 +8,17 @@ interface TrendStore {
     monthly: any[];
   } | null;
   loading: boolean;
-  fetchTrends: () => Promise<void>;
+  fetchTrends: (date?: string) => Promise<void>;
 }
 
 export const useTrendStore = create<TrendStore>((set) => ({
   trends: null,
   loading: false,
-  fetchTrends: async () => {
+  fetchTrends: async (date?: string) => {
     set({ loading: true });
     try {
-      const res = await axios.get('/server/rakshak_function/api/trends');
+      const url = date ? `/server/rakshak_function/api/trends?date=${date}` : '/server/rakshak_function/api/trends';
+      const res = await axios.get(url);
       if (res.data) {
         set({ trends: res.data, loading: false });
       }

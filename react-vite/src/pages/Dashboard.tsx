@@ -709,6 +709,7 @@ const SupervisorDashboard = () => {
   const { users } = useUserStore();
   const { trends, fetchTrends } = useTrendStore();
   const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [customDate, setCustomDate] = useState('');
   
   useEffect(() => {
     fetchCases();
@@ -978,10 +979,24 @@ const SupervisorDashboard = () => {
         <div className="xl:col-span-3 glass p-6 rounded-xl flex flex-col mt-2">
           <div className="flex justify-between items-center mb-6">
             <h3 className="text-xl font-bold text-gray-200">Ongoing Crime Trends</h3>
-            <div className="flex bg-black/40 p-1 rounded-lg">
-              <button onClick={() => setTimeframe('daily')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${timeframe === 'daily' ? 'bg-primary text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}>Daily</button>
-              <button onClick={() => setTimeframe('weekly')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${timeframe === 'weekly' ? 'bg-primary text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}>Weekly</button>
-              <button onClick={() => setTimeframe('monthly')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${timeframe === 'monthly' ? 'bg-primary text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}>Monthly</button>
+            <div className="flex items-center space-x-4">
+              <div className="flex bg-black/40 p-1 rounded-lg px-3">
+                <input 
+                  type="date" 
+                  className="bg-transparent text-gray-300 text-sm border-none outline-none focus:ring-0" 
+                  value={customDate}
+                  onChange={(e) => {
+                    setCustomDate(e.target.value);
+                    fetchTrends(e.target.value);
+                  }}
+                  title="Select Base Date"
+                />
+              </div>
+              <div className="flex bg-black/40 p-1 rounded-lg">
+                <button onClick={() => setTimeframe('daily')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${timeframe === 'daily' ? 'bg-primary text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}>Daily</button>
+                <button onClick={() => setTimeframe('weekly')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${timeframe === 'weekly' ? 'bg-primary text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}>Weekly</button>
+                <button onClick={() => setTimeframe('monthly')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${timeframe === 'monthly' ? 'bg-primary text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}>Monthly</button>
+              </div>
             </div>
           </div>
           <div className="w-full h-[300px]">
@@ -1256,8 +1271,15 @@ const SuperAdminDashboard = () => {
   const { users } = useUserStore();
   const { cases } = useCaseStore();
   const { events } = useTimelineStore();
+  const { trends, fetchTrends } = useTrendStore();
   const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
   const [isClearingCache, setIsClearingCache] = useState(false);
+  const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'monthly'>('daily');
+  const [customDate, setCustomDate] = useState('');
+
+  useEffect(() => {
+    fetchTrends();
+  }, [fetchTrends]);
 
   // Derived real-time metrics
   const totalUsers = users.length;
@@ -1388,25 +1410,56 @@ const SuperAdminDashboard = () => {
         </div>
       </div>
       
-      {/* Chart 3: Recent Events */}
+      {/* Chart 3: Ongoing Crime Trends (Replacing Event Volume Trends) */}
       <div className="glass p-6 rounded-xl flex flex-col justify-between">
-        <h3 className="text-lg font-semibold mb-4 text-gray-200">Event Volume Trends</h3>
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-gray-200">Ongoing Crime Trends</h3>
+          <div className="flex items-center space-x-3">
+            <div className="flex bg-black/40 p-1 rounded-lg px-2">
+              <input 
+                type="date" 
+                className="bg-transparent text-gray-300 text-xs border-none outline-none focus:ring-0" 
+                value={customDate}
+                onChange={(e) => {
+                  setCustomDate(e.target.value);
+                  fetchTrends(e.target.value);
+                }}
+                title="Select Base Date"
+              />
+            </div>
+            <div className="flex bg-black/40 p-1 rounded-lg">
+              <button onClick={() => setTimeframe('daily')} className={`px-2 py-1 rounded text-xs font-semibold transition-colors ${timeframe === 'daily' ? 'bg-primary text-white shadow' : 'text-gray-400 hover:text-white'}`}>D</button>
+              <button onClick={() => setTimeframe('weekly')} className={`px-2 py-1 rounded text-xs font-semibold transition-colors ${timeframe === 'weekly' ? 'bg-primary text-white shadow' : 'text-gray-400 hover:text-white'}`}>W</button>
+              <button onClick={() => setTimeframe('monthly')} className={`px-2 py-1 rounded text-xs font-semibold transition-colors ${timeframe === 'monthly' ? 'bg-primary text-white shadow' : 'text-gray-400 hover:text-white'}`}>M</button>
+            </div>
+          </div>
+        </div>
         <div className="flex-1 min-h-[250px]">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={recentEventsData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorCount" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
-                  <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#333" />
-              <XAxis dataKey="date" stroke="#888" fontSize={11} />
-              <YAxis stroke="#888" fontSize={12} allowDecimals={false} />
-              <RechartsTooltip contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151' }} itemStyle={{ color: '#fff' }} />
-              <Area type="monotone" dataKey="count" stroke="#10b981" fillOpacity={1} fill="url(#colorCount)" />
-            </AreaChart>
-          </ResponsiveContainer>
+          {trends && trends[timeframe] ? (
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={trends[timeframe]} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorActiveSA" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorClearedSA" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                <XAxis dataKey="date" stroke="#888" fontSize={11} />
+                <YAxis stroke="#888" fontSize={12} allowDecimals={false} />
+                <RechartsTooltip contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151' }} itemStyle={{ color: '#fff' }} />
+                <Legend wrapperStyle={{ fontSize: '12px', color: '#ccc' }} />
+                <Area type="monotone" dataKey="activeCases" name="Active Cases" stroke="#3b82f6" fillOpacity={1} fill="url(#colorActiveSA)" />
+                <Area type="monotone" dataKey="clearedCases" name="Cleared Cases" stroke="#10b981" fillOpacity={1} fill="url(#colorClearedSA)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-500 text-sm">Loading trends...</div>
+          )}
         </div>
         <div className="mt-6 pt-4 border-t border-white/10 flex space-x-3">
              <button 
