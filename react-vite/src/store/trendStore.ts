@@ -26,15 +26,25 @@ export const useTrendStore = create<TrendStore>((set) => ({
       const parseCaseDate = (dateStr: string) => {
         if (!dateStr) return new Date();
         let d = new Date();
-        if (dateStr.includes('/')) {
-          const parts = dateStr.split('/');
+        
+        // Handle DD/MM/YYYY or DD-MM-YYYY
+        const separator = dateStr.includes('/') ? '/' : (dateStr.includes('-') && dateStr.split('-')[0].length === 2 ? '-' : null);
+        
+        if (separator) {
+          const parts = dateStr.split(separator);
           if (parts.length === 3) {
              d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T12:00:00Z`);
           }
         } else {
           d = new Date(dateStr);
         }
-        if (isNaN(d.getTime())) return new Date();
+        
+        if (isNaN(d.getTime())) {
+          // If still invalid, fallback to a safe past date so it gets counted, or just start of today
+          const fallback = new Date();
+          fallback.setHours(0,0,0,0);
+          return fallback;
+        }
         return d;
       };
 
@@ -55,6 +65,9 @@ export const useTrendStore = create<TrendStore>((set) => ({
              if (type === 'daily') d.setDate(d.getDate() - i);
              else if (type === 'weekly') d.setDate(d.getDate() - (i * 7));
              else if (type === 'monthly') d.setMonth(d.getMonth() - i);
+
+             // Set to end of the day so any case created ON this day is included
+             d.setHours(23, 59, 59, 999);
 
              const bucketKey = getBucket(d, type);
              
