@@ -745,10 +745,12 @@ const SupervisorDashboard = () => {
     return Array.from(divisionMap.entries()).map(([division, info], idx) => {
       // Estimate clearance and case count based on member count
       const baseClearance = 75 + (idx % 3) * 5;
-      const divisionCases = cases.filter(c => 
-        (c.type && division && c.type.toLowerCase().includes(division.toLowerCase().split(' ')[0])) ||
-        (c.type && division && c.type.toLowerCase().includes('cyber') && division.toLowerCase().includes('cyber'))
-      ).length || Math.max(1, info.memberCount * 2);
+      const divisionCases = cases.filter(c => {
+        const typeStr = typeof c.type === 'string' ? c.type.toLowerCase() : '';
+        const divStr = typeof division === 'string' ? division.toLowerCase() : '';
+        return (typeStr && divStr && typeStr.includes(divStr.split(' ')[0])) ||
+               (typeStr && divStr && typeStr.includes('cyber') && divStr.includes('cyber'));
+      }).length || Math.max(1, info.memberCount * 2);
       const clearance = Math.min(99, Math.max(30, baseClearance - divisionCases));
       return {
         id: idx + 1,
