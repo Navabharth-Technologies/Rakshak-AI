@@ -37,9 +37,9 @@ const upload = multer({ storage: storage });
 const getFallbackData = () => {
     return {
         cases: [
-            { id: '202600001', CaseMasterID: 1, CrimeNo: '104430006202600001', CaseNo: '202600001', CrimeRegisteredDate: '2026-07-01T08:30:00Z', date: '2026-07-01T08:30:00Z', PoliceStationID: 40006, district: 40006, CrimeMajorHeadID: 10, CaseStatusID: 1, status: 'Under Investigation', accused_name: 'Unknown', suspectName: 'Unknown', status_name: 'Under Investigation' },
-            { id: '202600002', CaseMasterID: 2, CrimeNo: '104430006202600002', CaseNo: '202600002', CrimeRegisteredDate: '2026-07-02T14:15:00Z', date: '2026-07-02T14:15:00Z', PoliceStationID: 40006, district: 40006, CrimeMajorHeadID: 20, CaseStatusID: 2, status: 'Charge Sheeted', accused_name: 'Ravi Kumar', suspectName: 'Ravi Kumar', status_name: 'Charge Sheeted' },
-            { id: '202600003', CaseMasterID: 3, CrimeNo: '104430006202600003', CaseNo: '202600003', CrimeRegisteredDate: '2026-07-02T14:15:00Z', date: '2026-07-02T14:15:00Z', PoliceStationID: 40006, district: 40006, CrimeMajorHeadID: 30, CaseStatusID: 3, status: 'Under Investigation', accused_name: 'Suresh Kumar', suspectName: 'Suresh Kumar', status_name: 'Under Investigation' }
+            { id: '202600001', CaseMasterID: 1, CrimeNo: '104430006202600001', CaseNo: '202600001', CrimeRegisteredDate: '2026-07-01T08:30:00Z', date: '2026-07-01T08:30:00Z', PoliceStationID: 40006, district: '40006', CrimeMajorHeadID: 10, CaseStatusID: 1, status: 'Under Investigation', accused_name: 'Unknown', suspectName: 'Unknown', status_name: 'Under Investigation' },
+            { id: '202600002', CaseMasterID: 2, CrimeNo: '104430006202600002', CaseNo: '202600002', CrimeRegisteredDate: '2026-07-02T14:15:00Z', date: '2026-07-02T14:15:00Z', PoliceStationID: 40006, district: '40006', CrimeMajorHeadID: 20, CaseStatusID: 2, status: 'Charge Sheeted', accused_name: 'Ravi Kumar', suspectName: 'Ravi Kumar', status_name: 'Charge Sheeted' },
+            { id: '202600003', CaseMasterID: 3, CrimeNo: '104430006202600003', CaseNo: '202600003', CrimeRegisteredDate: '2026-07-02T14:15:00Z', date: '2026-07-02T14:15:00Z', PoliceStationID: 40006, district: '40006', CrimeMajorHeadID: 30, CaseStatusID: 3, status: 'Under Investigation', accused_name: 'Suresh Kumar', suspectName: 'Suresh Kumar', status_name: 'Under Investigation' }
         ],
         network: {
             nodes: [
@@ -80,13 +80,13 @@ app.get('/api/cases', async (req, res) => {
 
         // Map Catalyst ZCQL result structure back to UI format
         const mappedResults = result.map(row => ({
-            id: row.CaseMaster.CaseNo || row.CaseMaster.ROWID, // Unique ID for frontend tracking
+            id: String(row.CaseMaster.CaseNo || row.CaseMaster.ROWID), // Unique ID for frontend tracking
             CaseMasterID: row.CaseMaster.ROWID,
-            caseNo: row.CaseMaster.CaseNo || 'N/A',
-            CrimeNo: row.CaseMaster.CaseNo || 'N/A',
+            caseNo: String(row.CaseMaster.CaseNo || 'N/A'),
+            CrimeNo: String(row.CaseMaster.CaseNo || 'N/A'),
             date: row.CaseMaster.CrimeRegisteredDate || new Date().toISOString(),
             CrimeRegisteredDate: row.CaseMaster.CrimeRegisteredDate || new Date().toISOString(),
-            district: row.CaseMaster.PoliceStationID || 'Unknown',
+            district: String(row.CaseMaster.PoliceStationID || 'Unknown'),
             PoliceStationID: row.CaseMaster.PoliceStationID || 'Unknown',
             type: 'FIR',
             CrimeMajorHeadID: 10,

@@ -338,12 +338,12 @@ const DISTRICT_TALUKS: Record<string, { label: string; value: string }[]> = {
 };
 
 function resolveLocationCoords(location: string, district?: string): [number, number] | null {
-  const locLower = (location || '').toLowerCase();
+  const locLower = String(location || '').toLowerCase();
   for (const [key, coords] of Object.entries(KARNATAKA_LOCATION_COORDS)) {
     if (locLower.includes(key)) return coords;
   }
   if (district) {
-    const distLower = district.toLowerCase();
+    const distLower = String(district).toLowerCase();
     for (const [key, coords] of Object.entries(KARNATAKA_LOCATION_COORDS)) {
       if (distLower.includes(key)) return coords;
     }

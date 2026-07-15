@@ -123,11 +123,11 @@ const CrimeSearch = () => {
 
   // Derived filtered results
   const filteredResults = results.filter(row => {
-    const term = searchTerm.toLowerCase();
-    const matchesSearch = row.id.toLowerCase().includes(term) || 
-                          row.accused.toLowerCase().includes(term) || 
-                          row.type.toLowerCase().includes(term) ||
-                          row.location.toLowerCase().includes(term);
+    const term = String(searchTerm).toLowerCase();
+    const matchesSearch = String(row.id).toLowerCase().includes(term) || 
+                          String(row.accused).toLowerCase().includes(term) || 
+                          String(row.type).toLowerCase().includes(term) ||
+                          String(row.location).toLowerCase().includes(term);
     
     const matchesStatus = filterStatus === 'All' || row.status === filterStatus;
     const matchesType = filterType === 'All' || row.type === filterType;

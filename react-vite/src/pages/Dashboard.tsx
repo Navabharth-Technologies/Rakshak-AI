@@ -525,7 +525,7 @@ const InvestigatorDashboard = () => {
           </h3>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          {cases.filter(c => c.assignee !== 'Unassigned' && c.assignee && user?.name && c.assignee.toLowerCase().includes(user.name.toLowerCase().replace('officer ', '').trim())).map(c => (
+          {cases.filter(c => c.assignee !== 'Unassigned' && c.assignee && user?.name && String(c.assignee).toLowerCase().includes(String(user.name).toLowerCase().replace('officer ', '').trim())).map(c => (
             <motion.div 
               key={c.id} 
               whileHover={{ y: -4 }} 

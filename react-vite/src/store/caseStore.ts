@@ -95,7 +95,7 @@ export const useAssignedCases = () => {
     return cases.filter((c: any) => 
       c.assignee && 
       user?.name && 
-      c.assignee.toLowerCase().includes(user.name.toLowerCase().replace('officer ', '').trim())
+      String(c.assignee).toLowerCase().includes(String(user.name).toLowerCase().replace('officer ', '').trim())
     );
   }, [cases, user, role]);
 };
