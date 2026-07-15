@@ -7,12 +7,17 @@ interface TrendStore {
     monthly: any[];
   } | null;
   loading: boolean;
+  fetchTrends: (date?: string) => Promise<void>;
   generateTrends: (cases: any[], targetDateStr?: string) => void;
 }
 
 export const useTrendStore = create<TrendStore>((set) => ({
   trends: null,
   loading: false,
+  fetchTrends: async (date?: string) => {
+    // Dummy function to prevent HMR crashes for old cached components
+    console.warn("fetchTrends is deprecated, use generateTrends instead.");
+  },
   generateTrends: (cases: any[], targetDateStr?: string) => {
     set({ loading: true });
     try {
@@ -20,14 +25,17 @@ export const useTrendStore = create<TrendStore>((set) => ({
       
       const parseCaseDate = (dateStr: string) => {
         if (!dateStr) return new Date();
+        let d = new Date();
         if (dateStr.includes('/')) {
           const parts = dateStr.split('/');
-          // en-IN is DD/MM/YYYY
           if (parts.length === 3) {
-             return new Date(`${parts[2]}-${parts[1]}-${parts[0]}T12:00:00Z`);
+             d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T12:00:00Z`);
           }
+        } else {
+          d = new Date(dateStr);
         }
-        return new Date(dateStr);
+        if (isNaN(d.getTime())) return new Date();
+        return d;
       };
 
       const getBucket = (cDate: Date, type: 'daily' | 'weekly' | 'monthly') => {
