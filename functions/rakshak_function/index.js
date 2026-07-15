@@ -597,6 +597,48 @@ app.put('/api/ui/users', async (req, res) => {
     }
 });
 
+app.get('/api/trends', async (req, res) => {
+    try {
+        const catalystApp = catalyst.initialize(req);
+        const cache = catalystApp.cache().segment('DefaultSegment');
+        
+        let trendsData = await cache.get('CrimeTrends').catch(() => null);
+        
+        if (trendsData) {
+            if (typeof trendsData === 'string') {
+                trendsData = JSON.parse(trendsData);
+            }
+            return res.json(trendsData);
+        }
+        
+        // Fallback mock trends if cron hasn't run yet
+        const today = new Date();
+        const generateTrends = (days, base) => {
+            return Array.from({length: days}).map((_, i) => {
+                const d = new Date(today);
+                d.setDate(d.getDate() - (days - 1 - i));
+                return {
+                    date: d.toISOString().split('T')[0],
+                    activeCases: base + Math.floor(Math.random() * 20),
+                    clearedCases: Math.floor(base/2) + Math.floor(Math.random() * 10),
+                    newIncidents: Math.floor(Math.random() * 15)
+                };
+            });
+        };
+
+        const mockTrends = {
+            daily: generateTrends(7, 50),
+            weekly: generateTrends(4, 300),
+            monthly: generateTrends(12, 1200)
+        };
+        
+        res.json(mockTrends);
+    } catch (error) {
+        console.error("Cache GET Error (CrimeTrends):", error);
+        res.status(500).json({ error: 'Failed to fetch trends' });
+    }
+});
+
 // GET /api/network/:caseId - Fetch graph relationships
 app.get('/api/network/:caseId', async (req, res) => {
     const catalystApp = catalyst.initialize(req);

@@ -26,6 +26,7 @@ import { useToastStore } from '../store/toastStore';
 import { useTimelineStore } from '../store/timelineStore';
 import { useCaseStore } from '../store/caseStore';
 import { useUserStore } from '../store/userStore';
+import { useTrendStore } from '../store/trendStore';
 import { generateCasePDF } from '../utils/pdfExport';
 
 const formatNames = (names: string | string[] | undefined): string => {
@@ -706,10 +707,13 @@ const SupervisorDashboard = () => {
   const { addEvent } = useTimelineStore();
   const { cases, updateCase, fetchCases } = useCaseStore();
   const { users } = useUserStore();
+  const { trends, fetchTrends } = useTrendStore();
+  const [timeframe, setTimeframe] = useState<'daily' | 'weekly' | 'monthly'>('daily');
   
   useEffect(() => {
     fetchCases();
-  }, [fetchCases]);
+    fetchTrends();
+  }, [fetchCases, fetchTrends]);
   const [activeTab, setActiveTab] = useState<'overview' | 'dispatch' | 'active'>('overview');
   const [selectedCases, setSelectedCases] = useState<string[]>([]);
   const [bulkAssignee, setBulkAssignee] = useState<string>('');
@@ -969,6 +973,46 @@ const SupervisorDashboard = () => {
             </div>
           )}
         </div>
+
+        {/* Ongoing Trends Section */}
+        <div className="xl:col-span-3 glass p-6 rounded-xl flex flex-col mt-2">
+          <div className="flex justify-between items-center mb-6">
+            <h3 className="text-xl font-bold text-gray-200">Ongoing Crime Trends</h3>
+            <div className="flex bg-black/40 p-1 rounded-lg">
+              <button onClick={() => setTimeframe('daily')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${timeframe === 'daily' ? 'bg-primary text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}>Daily</button>
+              <button onClick={() => setTimeframe('weekly')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${timeframe === 'weekly' ? 'bg-primary text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}>Weekly</button>
+              <button onClick={() => setTimeframe('monthly')} className={`px-4 py-1.5 rounded-md text-sm font-semibold transition-colors ${timeframe === 'monthly' ? 'bg-primary text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}>Monthly</button>
+            </div>
+          </div>
+          <div className="w-full h-[300px]">
+            {trends && trends[timeframe] ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={trends[timeframe]} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorActive" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorCleared" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333" />
+                  <XAxis dataKey="date" stroke="#888" fontSize={11} />
+                  <YAxis stroke="#888" fontSize={12} allowDecimals={false} />
+                  <RechartsTooltip contentStyle={{ backgroundColor: '#1f2937', borderColor: '#374151' }} itemStyle={{ color: '#fff' }} />
+                  <Legend wrapperStyle={{ fontSize: '12px', color: '#ccc' }} />
+                  <Area type="monotone" dataKey="activeCases" name="Active Cases" stroke="#3b82f6" fillOpacity={1} fill="url(#colorActive)" />
+                  <Area type="monotone" dataKey="clearedCases" name="Cleared Cases" stroke="#10b981" fillOpacity={1} fill="url(#colorCleared)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-gray-500">Loading trends...</div>
+            )}
+          </div>
+        </div>
+
       </div>
       )}
 
