@@ -78,8 +78,19 @@ app.get('/api/cases', async (req, res) => {
 
         const result = await zcql.executeZCQLQuery(query);
 
+        // Filter out duplicate cases to prevent React key warnings in the frontend
+        const uniqueResults = [];
+        const seenIds = new Set();
+        result.forEach(row => {
+            const id = String(row.CaseMaster.CaseNo || row.CaseMaster.ROWID);
+            if (!seenIds.has(id)) {
+                seenIds.add(id);
+                uniqueResults.push(row);
+            }
+        });
+
         // Map Catalyst ZCQL result structure back to UI format
-        const mappedResults = result.map(row => ({
+        const mappedResults = uniqueResults.map(row => ({
             id: String(row.CaseMaster.CaseNo || row.CaseMaster.ROWID), // Unique ID for frontend tracking
             CaseMasterID: row.CaseMaster.ROWID,
             caseNo: String(row.CaseMaster.CaseNo || 'N/A'),
