@@ -75,7 +75,7 @@ export const useTrendStore = create<TrendStore>((set) => ({
              let cleared = 0;
              cases.forEach(c => {
                  const cDate = parseCaseDate(c.date || c.CrimeRegisteredDate);
-                 if (cDate <= d) {
+                 if (getBucket(cDate, type) === bucketKey) {
                      if (c.status === 'Completed' || c.status === 'Closed') {
                          cleared++;
                      } else {
