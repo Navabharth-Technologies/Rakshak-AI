@@ -9,7 +9,7 @@ const EvidenceModeration = () => {
   const [activeTab, setActiveTab] = useState<'queue' | 'dashboard'>('queue');
   const [queue, setQueue] = useState<any[]>([]);
   const [file, setFile] = useState<File | null>(null);
-  const [targetCaseId, setTargetCaseId] = useState('104430006202600001');
+  const [targetCaseId, setTargetCaseId] = useState('');
   const { addEvent } = useTimelineStore();
   const [processingState, setProcessingState] = useState<'idle' | 'scanning' | 'complete'>('idle');
   const [moderationResult, setModerationResult] = useState<any>(null);
@@ -23,11 +23,13 @@ const EvidenceModeration = () => {
   const { addToast } = useToastStore();
   const cases = useAssignedCases();
 
+  const activeCases = cases.filter(c => c.status !== 'Completed');
+
   useEffect(() => {
-    if (cases.length > 0 && !cases.find(c => c.id === targetCaseId)) {
-      setTargetCaseId(cases[0].id);
+    if (activeCases.length > 0 && (!targetCaseId || !activeCases.find(c => c.id === targetCaseId))) {
+      setTargetCaseId(activeCases[0].id);
     }
-  }, [cases, targetCaseId]);
+  }, [activeCases, targetCaseId]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -99,7 +101,8 @@ const EvidenceModeration = () => {
             confidence: data.confidence ? `${(data.confidence * 100).toFixed(1)}%` : 'High',
             uploader: 'Admin',
             date: 'Just now',
-            blurred: true
+            blurred: true,
+            caseId: targetCaseId // Store the target case ID for this specific evidence
           };
           setQueue(prev => [newItem, ...prev]);
           setLastUploadedId(newItem.id);
@@ -117,9 +120,12 @@ const EvidenceModeration = () => {
   };
 
   const handleApprove = (id: string) => {
+    const itemToApprove = queue.find(q => q.id === id);
+    if (!itemToApprove) return;
+    
     setQueue(prev => prev.filter(q => q.id !== id));
     addEvent({
-      caseId: targetCaseId,
+      caseId: itemToApprove.caseId,
       title: 'Evidence Override & Indexed',
       desc: `Quarantined evidence ${id} was manually approved by human reviewer and securely indexed.`,
       type: 'success',
@@ -129,7 +135,7 @@ const EvidenceModeration = () => {
       bg: 'bg-success/20',
       color: 'text-success'
     });
-    addToast(`Evidence ${id} overridden and indexed to Case ${targetCaseId}.`, 'success');
+    addToast(`Evidence ${id} overridden and indexed to Case ${itemToApprove.caseId}.`, 'success');
   };
 
   const handleReject = (id: string) => {
@@ -155,10 +161,10 @@ const EvidenceModeration = () => {
   };
 
   const handleExport = () => {
-    const headers = ['Evidence ID', 'Title', 'Severity', 'Flags', 'Confidence', 'Uploader', 'Date'];
+    const headers = ['Evidence ID', 'Case ID', 'Title', 'Severity', 'Flags', 'Confidence', 'Uploader', 'Date'];
     const csvRows = [
       headers.join(','),
-      ...queue.map(q => `"${q.id}","${q.title}","${q.severity}","${q.flags.join('; ')}","${q.confidence}","${q.uploader}","${q.date}"`)
+      ...queue.map(q => `"${q.id}","${q.caseId}","${q.title}","${q.severity}","${q.flags.join('; ')}","${q.confidence}","${q.uploader}","${q.date}"`)
     ];
     const blob = new Blob([csvRows.join('\n')], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
