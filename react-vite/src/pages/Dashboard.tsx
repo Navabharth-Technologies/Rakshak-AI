@@ -170,7 +170,7 @@ const DeskOfficerDashboard = () => {
     
     // Find highest serial number among existing cases
     const maxSerial = cases.reduce((max, c) => {
-      const serialStr = c.id.slice(-5);
+      const serialStr = c.id ? c.id.slice(-5) : '';
       const serialNum = parseInt(serialStr, 10);
       return !isNaN(serialNum) && serialNum > max ? serialNum : max;
     }, 0);
@@ -254,9 +254,9 @@ const DeskOfficerDashboard = () => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {cases.map(c => (
+        {cases.map((c, idx) => (
           <motion.div
-            key={c.id}
+            key={c.id || `case-${idx}`}
             whileHover={{ y: -4, boxShadow: '0 8px 30px rgba(99,102,241,0.25)' }}
             onClick={() => setSelectedFir(c)}
             className="glass p-5 rounded-xl border-l-4 border-l-primary flex flex-col justify-between h-40 cursor-pointer group"

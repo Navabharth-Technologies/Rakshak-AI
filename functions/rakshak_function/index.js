@@ -616,7 +616,7 @@ app.get('/api/trends', async (req, res) => {
         }
         
         // Fallback mock trends if cron hasn't run yet or a specific date is requested
-        const targetDate = req.query.date ? new Date(req.query.date as string) : new Date();
+        const targetDate = req.query.date ? new Date(req.query.date) : new Date();
         const generateTrends = (days, base) => {
             return Array.from({length: days}).map((_, i) => {
                 const d = new Date(targetDate);
